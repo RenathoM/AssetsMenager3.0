@@ -1,0 +1,22 @@
+name: Remote Roblox Upload
+on:
+  repository_dispatch:
+    types: [trigger_upload]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install requests
+      - name: Run Bulk Upload
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          USER_ID: ${{ secrets.USER_ID }}
+          EXPERIMENT_ID: ${{ github.event.client_payload.experiment_id }}
+        run: python bulk_upload.py
