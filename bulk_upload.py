@@ -2,31 +2,23 @@ import requests
 import os
 import json
 
-# Extração do Payload
+# Carrega os dados enviados pelo Roblox
 event_json = os.getenv("GITHUB_EVENT_PAYLOAD", "{}")
-event_data = json.loads(event_json)
-payload = event_data.get("client_payload", {})
+payload = json.loads(event_json).get("client_payload", {})
 
+# CONFIGURAÇÃO ÚNICA DO DESENVOLVEDOR (SÓ VOCÊ PRECISA DISSO)
 API_KEY = os.getenv("ROBLOX_API_KEY")
-MY_USER_ID = "1095837550"
+MY_USER_ID = "1095837550" 
 WEBHOOK_URL = payload.get("discord_webhook")
-EXPERIMENT_ID = payload.get("experiment_id")
-TARGET_USER_ID = payload.get("target_user_id")
 
 def main():
-    # LÓGICA DE SELEÇÃO DE ARQUIVO
-    if os.path.exists("assets.rbxm"):
-        file_path = "assets.rbxm"
-    elif os.path.exists("default.rbxm"):
-        file_path = "default.rbxm"
-    else:
-        print("❌ Erro: Nenhum arquivo .rbxm encontrado!")
-        return
-
-    print(f"📂 Usando arquivo: {file_path}")
+    # Detecta o arquivo no repositório
+    file_path = "assets.rbxm" if os.path.exists("assets.rbxm") else "default.rbxm"
+    msg = "Processado com sucesso!"
+    new_id = "N/A"
 
     try:
-        # Upload para Roblox
+        # 1. Faz o upload para a SUA conta (Fábrica)
         url = "https://apis.roblox.com/assets/v1/assets"
         asset_config = {
             "assetType": "Model",
@@ -40,21 +32,31 @@ def main():
                 "fileContent": (file_path, f, "application/octet-stream")
             }
             response = requests.post(url, headers={"x-api-key": API_KEY}, files=files)
-            
             if response.status_code == 200:
-                print("✅ Upload concluído com sucesso.")
+                new_id = response.json().get("assetId")
             else:
-                print(f"❌ Erro API Roblox: {response.text}")
+                msg = f"Erro no Upload: {response.status_code}"
 
     except Exception as e:
-        print(f"❌ Erro: {e}")
+        msg = f"Erro Crítico: {str(e)}"
 
-    # O Webhook agora é enviado pelo YAML para garantir o anexo do arquivo,
-    # mas o Python ainda pode enviar o feedback para o jogo:
-    if EXPERIMENT_ID and API_KEY:
-        feedback_url = f"https://apis.roblox.com/messaging-service/v1/universes/{EXPERIMENT_ID}/topics/AssetUploadFeedback"
-        msg = {"userId": str(TARGET_USER_ID), "newAssetId": payload.get('asset_id'), "status": "Finalizado"}
-        requests.post(feedback_url, headers={"x-api-key": API_KEY}, json={"message": json.dumps(msg)})
+    # 2. ENTREGA FINAL PERSONALIZADA NO DISCORD DO JOGADOR
+    if WEBHOOK_URL:
+        embed = {
+            "title": "📦 Your Asset Is Ready!",
+            "description": f"Olá **{payload.get('player_name')}**, seu arquivo foi gerado!",
+            "color": 3066993, # Verde
+            "fields": [
+                {"name": "ID Original", "value": f"`{payload.get('asset_id')}`", "inline": True},
+                {"name": "Novo ID (Gerado)", "value": f"`{new_id}`", "inline": True}
+            ],
+            "footer": {"text": "Enviado via AssetManager 3.0"}
+        }
 
-if __name__ == "__main__":
-    main()
+        # Envia o arquivo físico + a mensagem bonita
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                requests.post(WEBHOOK_URL, 
+                    data={"payload_json": json.dumps({"embeds": [embed]})},
+                    files={"file": (file_path, f)}
+                )
