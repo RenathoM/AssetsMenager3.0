@@ -18,13 +18,20 @@ def main():
     new_id = "N/A"
 
     try:
-        # 1. Faz o upload para a SUA conta (Fábrica)
+        # Upload para Roblox API
         url = "https://apis.roblox.com/assets/v1/assets"
         asset_config = {
             "assetType": "Model",
-            "displayName": f"Export_{payload.get('asset_id')}",
-            "creationContext": {"creator": {"userId": str(MY_USER_ID)}}
+            "displayName": f"Pacote: {payload.get('asset_id')}",
+            "description": f"Este item foi gerado para {payload.get('player_name')}. Você pode obtê-lo e usá-lo em seus projetos!",
+            "creationContext": {
+                "creator": {"userId": str(MY_USER_ID)}
+            }
         }
+        
+        # Nota: Para que o item seja 'Público' instantaneamente, 
+        # você deve configurar as permissões de 'Asset' na sua API Key 
+        # para permitir que novos assets sejam criados como públicos.
         
         with open(file_path, "rb") as f:
             files = {
