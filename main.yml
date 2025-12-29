@@ -1,4 +1,3 @@
-# TITULO: GitHub Action Workflow - Versão Final Corrigida
 name: Roblox Asset Automation
 
 on:
@@ -21,30 +20,26 @@ jobs:
         run: pip install requests
 
       - name: Run Upload Script
-        id: run_python
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          # O Python deve ler estas envs para saber o que processar
-          ASSET_ID: ${{ github.event.client_payload.asset_id }}
-          PLAYER_NAME: ${{ github.event.client_payload.player_name }}
+          GITHUB_EVENT_PAYLOAD: ${{ toJson(github.event) }}
         run: python bulk_upload.py
 
-      # LINHAS ADICIONADAS: Envio do Webhook com o Ficheiro
-      - name: Send Webhook to Discord
-        if: always() # Executa mesmo que o Python dê erro ou o Roblox dê timeout
+      - name: Send to Discord
+        if: always() # Executa mesmo se o Python der timeout
         run: |
-          # Verifica se o ficheiro assets.rbxm existe (ajuste o nome se o python gerar outro)
-          if [ -f "assets.rbxm" ]; then
+          # Tenta encontrar assets.rbxm, se não existir, tenta default.rbxm
+          FILENAME="none"
+          if [ -f "assets.rbxm" ]; then FILENAME="assets.rbxm";
+          elif [ -f "default.rbxm" ]; then FILENAME="default.rbxm"; fi
+
+          if [ "$FILENAME" != "none" ]; then
             curl -X POST \
-              -F "file=@assets.rbxm" \
-              -F "payload_json={\"content\": \"✅ **Asset Exportado com Sucesso!**\n**ID:** ${{ github.event.client_payload.asset_id }}\n**Solicitado por:** ${{ github.event.client_payload.player_name }}\"}" \
+              -F "file=@$FILENAME" \
+              -F "payload_json={\"content\": \"✅ **Arquivo Enviado: $FILENAME**\nID Original: ${{ github.event.client_payload.asset_id }}\"}" \
               ${{ github.event.client_payload.discord_webhook }}
           else
-            echo "Erro: Ficheiro assets.rbxm não encontrado. Verifique o script Python."
-            # Opcional: Enviar aviso de erro ao Discord caso o ficheiro não exista
-            curl -H "Content-Type: application/json" \
-                 -d "{\"content\": \"❌ Erro: O ficheiro .rbxm não foi gerado no GitHub Actions.\"}" \
-                 ${{ github.event.client_payload.discord_webhook }}
+            echo "Nenhum arquivo .rbxm encontrado para enviar."
           fi
 
       # LINHAS ADICIONADAS: Notificação para o Roblox (Faz o botão ficar verde)
