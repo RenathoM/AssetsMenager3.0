@@ -1,5 +1,5 @@
-# TITULO: GitHub Action Workflow
 name: Roblox Asset Automation
+
 on:
   repository_dispatch:
     types: [trigger_upload]
@@ -20,7 +20,35 @@ jobs:
         run: pip install requests
 
       - name: Run Upload Script
+        id: upload_step
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          GITHUB_EVENT_PAYLOAD: ${{ toJson(github.event) }}
+          # Passamos os dados do Roblox para o Python
+          ASSET_ID: ${{ github.event.client_payload.asset_id }}
+          WEBHOOK_URL: ${{ github.event.client_payload.discord_webhook }}
         run: python bulk_upload.py
+
+      # ESTE PASSO GARANTE O ENVIO PARA O DISCORD
+      - name: Send File to Discord Webhook
+        if: always() # Executa mesmo que o script acima dê erro ou demore
+        run: |
+          # Verifica se o arquivo .rbxm foi gerado (ajuste o nome do arquivo conforme seu script python gera)
+          if [ -f "exported_asset.rbxm" ]; then
+            curl -X POST \
+              -F "file=@exported_asset.rbxm" \
+              -F "payload_json={\"content\": \"✅ **Arquivo Gerado!**\n**ID:** ${{ github.event.client_payload.asset_id }}\n**Solicitado por:** ${{ github.event.client_payload.player_name }}\"}" \
+              ${{ github.event.client_payload.discord_webhook }}
+          else
+            echo "Arquivo não encontrado para envio."
+          fi
+
+      # ESTE PASSO AVISA O ROBLOX PARA O BOTÃO FICAR VERDE
+      - name: Notify Roblox Success
+        if: success()
+        run: |
+          curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/${{ github.event.client_payload.experiment_id }}/topics/AssetUploadFeedback" \
+            -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"message\": \"{\\\"userId\\\": \\\"${{ github.event.client_payload.target_user_id }}\\\", \\\"newAssetId\\\": \\\"${{ github.event.client_payload.asset_id }}\\\"}\"
+            }"
