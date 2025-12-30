@@ -28,7 +28,7 @@ jobs:
       - name: Send to Discord
         if: always() # Executa mesmo se o Python der timeout
         run: |
-          # Tenta encontrar assets.rbxm, se não existir, tenta default.rbxm
+          # Try to find assets.rbxm; if it doesn't exist, try default.rbxm
           FILENAME="none"
           if [ -f "assets.rbxm" ]; then FILENAME="assets.rbxm";
           elif [ -f "default.rbxm" ]; then FILENAME="default.rbxm"; fi
@@ -36,10 +36,10 @@ jobs:
           if [ "$FILENAME" != "none" ]; then
             curl -X POST \
               -F "file=@$FILENAME" \
-              -F "payload_json={\"content\": \"✅ **Arquivo Enviado: $FILENAME**\nID Original: ${{ github.event.client_payload.asset_id }}\"}" \
+              -F "payload_json={\"content\": \"✅ **File Sent: $FILENAME**\nID Original: ${{ github.event.client_payload.asset_id }}\"}" \
               ${{ github.event.client_payload.discord_webhook }}
           else
-            echo "Nenhum arquivo .rbxm encontrado para enviar."
+            echo "No .rbxm files found to send."
           fi
 
       - name: Notify Roblox Messaging Service
