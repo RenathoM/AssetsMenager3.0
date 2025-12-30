@@ -42,7 +42,6 @@ jobs:
             echo "Nenhum arquivo .rbxm encontrado para enviar."
           fi
 
-      # LINHAS ADICIONADAS: Notificação para o Roblox (Faz o botão ficar verde)
       - name: Notify Roblox Messaging Service
         if: success()
         run: |
@@ -50,5 +49,5 @@ jobs:
             -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d "{
-              \"message\": \"{\\\"userId\\\": \\\"${{ github.event.client_payload.target_user_id }}\\\", \\\"newAssetId\\\": \\\"${{ github.event.client_payload.asset_id }}\\\"}\"
+              \"message\": \"{\\\"playerId\\\": \\\"${{ github.event.client_payload.target_user_id }}\\\", \\\"status\\\": \\\"success\\\"}\"
             }"
