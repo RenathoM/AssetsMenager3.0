@@ -41,15 +41,21 @@ def notify_roblox(status, asset_id="N/A"):
     requests.post(url, headers={"x-api-key": API_KEY, "Content-Type": "application/json"}, json=data)
 
 def main():
+    print("🚀 Script iniciado...")
     file_path = "item.rbxm"
     
-    # 1. Download
+    print(f"📦 Verificando Asset ID: {ORIGINAL_ID}")
+    # 1. Download do Asset Original
     r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
-    if r_down.status_code != 200:
+    print(f"🌐 Status do Download: {r_down.status_code}")
+    
+    if r_down.status_code == 200:
+        with open(file_path, "wb") as f:
+            f.write(r_down.content)
+        print("✅ Arquivo salvo com sucesso.")
+    else:
+        print("❌ Erro ao baixar asset da Roblox.")
         return
-
-    with open(file_path, "wb") as f:
-        f.write(r_down.content)
 
     # 2. Upload para o Grupo
     url = "https://apis.roblox.com/assets/v1/assets"
