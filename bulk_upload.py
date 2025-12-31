@@ -105,7 +105,7 @@ def main():
         display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
         
         embed = {
-            "title": "📦 Asset Processado!",
+            "title": "📦 Asset Ready!",
             "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
             "color": 3066993 if final_asset_id != "N/A" else 15158332,
             "fields": [
