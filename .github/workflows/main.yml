@@ -37,20 +37,3 @@ jobs:
             echo "❌ Erro: bulk_upload.py não encontrado!"
             exit 1
           fi
-
-      - name: Notify Roblox Messaging Service
-        if: env.NEW_ASSET_ID != ''
-        run: |
-          curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/103111986841337/topics/AssetUploadFeedback" \
-          -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"message\": \"{\\\"playerId\\\":\\\"${{ github.event.client_payload.target_user_id }}\\\",\\\"status\\\":\\\"success\\\",\\\"assetId\\\":\\\"${{ env.NEW_ASSET_ID }}\\\"}\"}"
-
-      - name: Notify Failure
-        # Caso o ID não tenha sido gerado, avisa o erro para destravar o botão no jogo
-        if: env.NEW_ASSET_ID == ''
-        run: |
-          curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/103111986841337/topics/AssetUploadFeedback" \
-          -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"message\": \"{\\\"playerId\\\":\\\"${{ github.event.client_payload.target_user_id }}\\\",\\\"status\\\":\\\"error\\\"}\"}"
