@@ -68,9 +68,9 @@ def main():
     # Abrimos o arquivo aqui para garantir que ele seja lido do zero
     with open(file_path, "rb") as model_file:
         files = {
-            "request": (None, json.dumps(asset_config), "application/json"),
-            "fileContent": ("model.rbxm", model_file, "model/x-rbxm")
-        }
+        "request": (None, json.dumps(asset_config), "application/json"),
+        "fileContent": ("model.rbxm", model_file, "application/octet-stream") # Alterado para stream genérico
+    }
         print("⚙️ Enviando para Roblox...")
         response = requests.post("https://apis.roblox.com/assets/v1/assets", 
                                  headers={"x-api-key": API_KEY}, 
