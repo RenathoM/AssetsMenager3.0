@@ -56,10 +56,14 @@ def main():
     with open(file_path, "rb") as f:
         files = {
             "request": (None, json.dumps(asset_config), "application/json"),
-            "fileContent": ("model.rbxm", f, "application/octet-stream")
+            "fileContent": (file_path, f, "model/x-rbxm")
         }
         response = requests.post(url, headers={"x-api-key": API_KEY}, files=files)
     
+    res_data = response.json()
+    operation_path = res_data.get("path")
+    final_asset_id = "N/A"
+
     if response.status_code != 200:
         print(f"Erro no upload: {response.text}")
         return
