@@ -87,25 +87,32 @@ def main():
     # 4. Polling (Só entra aqui se operation_path existir)
     final_asset_id = "N/A"
     if operation_path:
-        for i in range(10):
-            time.sleep(3)
-            print(f"⏱️ Verificando status (tentativa {i+1})...")
+        for _ in range(15):
+            time.sleep(2)
             op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers={"x-api-key": API_KEY})
-            if op_res.status_code == 200:
-                op_data = op_res.json()
-                if op_data.get("done"):
-                    final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                    print(f"✅ Sucesso! Novo ID: {final_asset_id}")
-                    break
-    
-    # 5. Discord e Finalização
-    if WEBHOOK_URL and final_asset_id != "N/A":
+            op_data = op_res.json()
+            
+            if op_data.get("done"):
+                final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
+                # ESSENCIAL: Imprime para o GitHub Actions capturar o ID
+                print(f"ASSET_ID={final_asset_id}")
+                break
+    success = final_asset_id != "N/A"
+     # 5. Envio para o Discord (Sempre funciona, independente do jogo)
+    if WEBHOOK_URL:
+        roblox_url = f"https://www.roblox.com/library/{final_asset_id}"
+        display_id = f"[{final_asset_id}]({roblox_url})" if success else "`N/A`"
+
         embed = {
-            "title": "📦 Asset Processado!",
-            "description": f"Jogador: **{PLAYER_NAME}**\nLink: [Clique Aqui](https://www.roblox.com/library/{final_asset_id})",
-            "color": 3066993
-        }
-        requests.post(WEBHOOK_URL, json={"embeds": [embed]})
+            "title": ":package: Asset Processed!",
+            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
+            "color": 3066993 if success else 15158332,
+            "fields": [
+                {"name": "Status", "value": ":white_check_mark: Success" if success else ":x: Failed", "inline": True},
+                {"name": "Final ID", "value": display_id, "inline": True},
+                {"name": "Player", "value": PLAYER_NAME, "inline": True}
+            ],
+            "footer": {"text": "Sent via AssetManager 4.0"}
 
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
     print("🏁 Processo finalizado.")
