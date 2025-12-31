@@ -12,6 +12,21 @@ EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 # Webhook fixo para a administração/logs
 ADMIN_WEBHOOK = "https://discord.com/api/webhooks/1453805636784488509/6tdAXTB0DqdiWaLTmi05bWWDnTDk9mGLhmDFVTXgiL48yVKcOpN_at22DtCY8SotPvn1"
 
+def get_asset_thumbnail(asset_id):
+    """Obtém a URL da imagem do asset via API de Thumbnails."""
+    if asset_id == "N/A":
+        return None
+    url = f"https://thumbnails.roblox.com/v1/assets?assetIds={asset_id}&returnPolicy=PlaceHolder&size=420x420&format=png"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("data") and len(data["data"]) > 0:
+                return data["data"][0].get("imageUrl")
+    except Exception as e:
+        print(f"⚠️ Erro ao obter thumbnail: {e}")
+    return None
+
 def notify_roblox(status, asset_id="N/A", target_user_id="0"):
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
     data = {
@@ -33,7 +48,6 @@ def main():
         print("❌ Erro: GITHUB_EVENT_PATH não encontrado.")
         return
 
-    # 1. Carregar Payload
     try:
         with open(EVENT_PATH, 'r') as f:
             event_data = json.load(f)
@@ -49,7 +63,6 @@ def main():
 
     print(f"📦 Processando Asset ID: {ORIGINAL_ID} para {PLAYER_NAME}")
 
-    # 2. Download
     file_path = "item.rbxm"
     r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
     if r_down.status_code == 200:
@@ -60,7 +73,6 @@ def main():
         print(f"❌ Falha no download: {r_down.status_code}")
         return
 
-    # 3. Upload
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
         "assetType": "Model",
@@ -70,7 +82,6 @@ def main():
     }
     
     operation_path = None
-
     with open(file_path, "rb") as f:
         files = {
             "request": (None, json.dumps(asset_config), "application/json"),
@@ -86,7 +97,6 @@ def main():
         notify_roblox("error", target_user_id=TARGET_USER_ID)
         return
 
-    # 4. Polling
     final_asset_id = "N/A"
     if operation_path:
         for i in range(10):
@@ -100,8 +110,8 @@ def main():
                     print(f"✅ Sucesso! Novo ID: {final_asset_id}")
                     break
     
-    # 5. Envio para o Discord (Modelo Antigo com Fields)
-    # Preparação do Embed
+    # Obter imagem do item
+    thumbnail_url = get_asset_thumbnail(final_asset_id)
     display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
     
     embed_payload = {
@@ -110,40 +120,25 @@ def main():
             "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
             "color": 3066993 if final_asset_id != "N/A" else 15158332,
             "fields": [
-                {
-                    "name": "Status",
-                    "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed",
-                    "inline": True
-                },
-                {
-                    "name": "Final ID",
-                    "value": display_id,
-                    "inline": True
-                },
-                {
-                    "name": "Player",
-                    "value": PLAYER_NAME,
-                    "inline": True
-                }
+                {"name": "Status", "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed", "inline": True},
+                {"name": "Final ID", "value": display_id, "inline": True},
+                {"name": "Player", "value": PLAYER_NAME, "inline": True}
             ],
-            "footer": {
-                "text": "Sent via AssetManager 4.0"
-            }
+            "image": {"url": thumbnail_url} if thumbnail_url else {},
+            "footer": {"text": "Sent via AssetManager 4.0"}
         }]
     }
 
-    # Envia para os dois Webhooks
     targets = [ADMIN_WEBHOOK]
     if PLAYER_WEBHOOK:
         targets.append(PLAYER_WEBHOOK)
 
-    for url in targets:
+    for webhook_url in targets:
         try:
-            requests.post(url, json=embed_payload)
-        except Exception as e:
-            print(f"❌ Erro ao enviar para {url}: {e}")
+            requests.post(webhook_url, json=embed_payload)
+        except:
+            pass
 
-    # Notifica o Roblox via Messaging Service
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
     print("🏁 Processo finalizado.")
 
