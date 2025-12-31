@@ -2,61 +2,82 @@ import requests
 import os
 import json
 import time
-import sys
 
 # Configurações do Ambiente
 API_KEY = os.getenv("RBX_API_KEY")
 MY_GROUP_ID = "633516837"
 UNIVERSE_ID = "9469723620"
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
+
+# Webhook fixo para administração/logs
 ADMIN_WEBHOOK = "https://discord.com/api/webhooks/1453805636784488509/6tdAXTB0DqdiWaLTmi05bWWDnTDk9mGLhmDFVTXgiL48yVKcOpN_at22DtCY8SotPvn1"
 
-def safe_request(func, *args, **kwargs):
-    """Executa requisições de forma segura com timeout."""
-    try:
-        kwargs['timeout'] = kwargs.get('timeout', 15)
-        return func(*args, **kwargs)
-    except:
+def get_asset_thumbnail(asset_id):
+    """Obtém a URL da imagem do asset via API de Thumbnails do Roblox."""
+    if asset_id == "N/A":
         return None
-
-def get_thumbnail(asset_id):
-    if not asset_id or asset_id == "N/A": return None
     url = f"https://thumbnails.roblox.com/v1/assets?assetIds={asset_id}&returnPolicy=PlaceHolder&size=420x420&format=png"
-    r = safe_request(requests.get, url)
-    if r and r.status_code == 200:
-        data = r.json()
-        if data.get("data"): return data["data"][0].get("imageUrl")
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("data") and len(data["data"]) > 0:
+                return data["data"][0].get("imageUrl")
+    except Exception as e:
+        print(f"⚠️ Erro ao obter thumbnail: {e}")
     return None
 
-def notify_roblox(status, asset_id="N/A", player_id="0"):
+def notify_roblox(status, asset_id="N/A", target_user_id="0"):
+    """Notifica a experiência Roblox via Messaging Service."""
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
-    data = {"message": json.dumps({"playerId": str(player_id), "status": status, "assetId": str(asset_id)})}
-    safe_request(requests.post, url, headers={"x-api-key": API_KEY, "Content-Type": "application/json"}, json=data)
+    data = {
+        "message": json.dumps({
+            "playerId": str(target_user_id),
+            "status": status,
+            "assetId": str(asset_id)
+        })
+    }
+    try:
+        requests.post(url, headers={"x-api-key": API_KEY, "Content-Type": "application/json"}, json=data)
+    except:
+        pass
 
 def main():
     print("🚀 Iniciando processo de upload...")
-    if not EVENT_PATH or not os.path.exists(EVENT_PATH): sys.exit(0)
+    
+    if not EVENT_PATH:
+        print("❌ Erro: GITHUB_EVENT_PATH não encontrado.")
+        return
 
+    # 1. Carregar Payload do GitHub Event
     try:
         with open(EVENT_PATH, 'r') as f:
-            payload = json.load(f).get("client_payload", {})
-    except: sys.exit(0)
+            event_data = json.load(f)
+            payload = event_data.get("client_payload", {})
+    except Exception as e:
+        print(f"❌ Erro ao ler payload: {e}")
+        return
 
     PLAYER_WEBHOOK = payload.get("discord_webhook")
     ORIGINAL_ID = payload.get("asset_id")
     PLAYER_NAME = payload.get("player_name", "Unknown")
-    TARGET_ID = payload.get("target_user_id", "0")
+    TARGET_USER_ID = payload.get("target_user_id", "0")
 
-    # 1. Download
+    print(f"📦 Processando Asset ID: {ORIGINAL_ID} para {PLAYER_NAME}")
+
+    # 2. Download do Asset Original
     file_path = "item.rbxm"
-    r_down = safe_request(requests.get, f"https://apis.roblox.com/assets/v1/assets/{ORIGINAL_ID}", headers={"x-api-key": API_KEY})
-    if not r_down or r_down.status_code != 200:
-        notify_roblox("error", player_id=TARGET_ID)
-        sys.exit(0)
-    
-    with open(file_path, "wb") as f: f.write(r_down.content)
+    r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
+    if r_down.status_code == 200:
+        with open(file_path, "wb") as f:
+            f.write(r_down.content)
+        print("✅ Download concluído.")
+    else:
+        print(f"❌ Falha no download: {r_down.status_code}")
+        return
 
-    # 2. Upload
+    # 3. Upload para o Grupo Roblox (MIME Type model/x-rbxm)
+    url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
         "assetType": "Model",
         "displayName": f"Asset_{ORIGINAL_ID}",
@@ -64,54 +85,69 @@ def main():
         "creationContext": {"creator": {"groupId": str(MY_GROUP_ID)}}
     }
     
+    operation_path = None
     with open(file_path, "rb") as f:
-        files = {"request": (None, json.dumps(asset_config), "application/json"), "fileContent": ("model.rbxm", f, "model/x-rbxm")}
-        r_up = safe_request(requests.post, "https://apis.roblox.com/assets/v1/assets", headers={"x-api-key": API_KEY}, files=files, timeout=60)
+        files = {
+            "request": (None, json.dumps(asset_config), "application/json"),
+            "fileContent": ("model.rbxm", f, "model/x-rbxm")
+        }
+        response = requests.post(url, headers={"x-api-key": API_KEY}, files=files)
 
-    if not r_up or r_up.status_code != 200:
-        notify_roblox("error", player_id=TARGET_ID)
-        sys.exit(0)
+    if response.status_code == 200:
+        operation_path = response.json().get("path")
+        print(f"⚙️ Operação iniciada: {operation_path}")
+    else:
+        print(f"❌ Erro no upload: {response.text}")
+        notify_roblox("error", target_user_id=TARGET_USER_ID)
+        return
 
-    op_path = r_up.json().get("path")
-    final_id = "N/A"
-    err = "Processing failed"
-
-    # 3. Polling
-    for _ in range(12):
-        time.sleep(5)
-        r_op = safe_request(requests.get, f"https://apis.roblox.com/assets/v1/{op_path}", headers={"x-api-key": API_KEY})
-        if r_op and r_op.status_code == 200:
-            data = r_op.json()
-            if data.get("done"):
-                if "response" in data:
-                    final_id = data["response"].get("assetId", "N/A")
-                else:
-                    err = data.get("error", {}).get("message", "Invalid Content")
-                break
-
-    # 4. Notificações
-    thumb = get_thumbnail(final_id)
-    embed = {
+    # 4. Polling para obter o ID Final
+    final_asset_id = "N/A"
+    if operation_path:
+        for i in range(10):
+            time.sleep(3)
+            print(f"⏱️ Verificando status (tentativa {i+1})...")
+            op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers={"x-api-key": API_KEY})
+            if op_res.status_code == 200:
+                op_data = op_res.json()
+                if op_data.get("done"):
+                    final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
+                    print(f"✅ Sucesso! Novo ID: {final_asset_id}")
+                    break
+    
+    # 5. Formatação do Webhook (Modelo Antigo com Imagem e Fields)
+    thumbnail_url = get_asset_thumbnail(final_asset_id)
+    display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
+    
+    embed_payload = {
         "embeds": [{
             "title": "📦 Asset Processed!",
             "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
-            "color": 3066993 if final_id != "N/A" else 15158332,
+            "color": 3066993 if final_asset_id != "N/A" else 15158332,
             "fields": [
-                {"name": "Status", "value": "✅ Success" if final_id != "N/A" else f"❌ Failed: {err}", "inline": False},
-                {"name": "Final ID", "value": f"[{final_id}](https://www.roblox.com/library/{final_id})" if final_id != "N/A" else "N/A", "inline": True},
+                {"name": "Status", "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed", "inline": True},
+                {"name": "Final ID", "value": display_id, "inline": True},
                 {"name": "Player", "value": PLAYER_NAME, "inline": True}
             ],
-            "image": {"url": thumb} if thumb else {},
+            "image": {"url": thumbnail_url} if thumbnail_url else {},
             "footer": {"text": "Sent via AssetManager 4.0"}
         }]
     }
 
-    for target in filter(None, [ADMIN_WEBHOOK, PLAYER_WEBHOOK]):
-        safe_request(requests.post, target, json=embed)
+    # Disparar para os dois destinos
+    targets = [ADMIN_WEBHOOK]
+    if PLAYER_WEBHOOK:
+        targets.append(PLAYER_WEBHOOK)
 
-    notify_roblox("success" if final_id != "N/A" else "error", final_id, TARGET_ID)
-    print("🏁 Processo finalizado com sucesso.")
-    sys.exit(0)
+    for webhook_url in targets:
+        try:
+            requests.post(webhook_url, json=embed_payload)
+        except Exception as e:
+            print(f"⚠️ Erro ao enviar webhook: {e}")
+
+    # Notificação final para o jogo
+    notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
+    print("🏁 Processo finalizado.")
 
 if __name__ == "__main__":
     main()
