@@ -19,29 +19,16 @@ jobs:
       - name: Install Requests
         run: pip install requests
 
-      - name: Run Upload Script
+      - name: Run Unified Upload Script
         env:
-          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          GITHUB_EVENT_PAYLOAD: ${{ toJson(github.event) }}
-        run: python bulk_upload.py
-
-      - name: Run Upload Script
-        env:
+          # Centralizamos todas as variáveis em um único passo
+          RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
           ROBLOX_COOKIE: ${{ secrets.ROBLOX_COOKIE }}
           GROUP_ID: ${{ secrets.GROUP_ID }}
-          RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          ASSET_ID: ${{ github.event.client_payload.asset_id }}
-          WEBHOOK_URL: ${{ github.event.client_payload.discord_webhook }}
         run: |
-          
           if [ -f "bulk_upload.py" ]; then
             python bulk_upload.py
           else
-            echo "❌ Erro: File bulk_upload.py not found in the repository!"
+            echo "❌ Erro: bulk_upload.py não encontrado!"
             exit 1
           fi
-
-      - name: Run Upload Script
-        env:
-          RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-        run: python bulk_upload.py
