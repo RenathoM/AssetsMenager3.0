@@ -9,11 +9,11 @@ MY_GROUP_ID = "633516837"
 UNIVERSE_ID = "9469723620"
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 
-# Webhook fixo para a administração/logs
+# Webhook fixo para administração/logs
 ADMIN_WEBHOOK = "https://discord.com/api/webhooks/1453805636784488509/6tdAXTB0DqdiWaLTmi05bWWDnTDk9mGLhmDFVTXgiL48yVKcOpN_at22DtCY8SotPvn1"
 
 def get_asset_thumbnail(asset_id):
-    """Obtém a URL da imagem do asset via API de Thumbnails."""
+    """Obtém a URL da imagem do asset via API de Thumbnails do Roblox."""
     if asset_id == "N/A":
         return None
     url = f"https://thumbnails.roblox.com/v1/assets?assetIds={asset_id}&returnPolicy=PlaceHolder&size=420x420&format=png"
@@ -28,6 +28,7 @@ def get_asset_thumbnail(asset_id):
     return None
 
 def notify_roblox(status, asset_id="N/A", target_user_id="0"):
+    """Notifica a experiência Roblox via Messaging Service."""
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
     data = {
         "message": json.dumps({
@@ -48,6 +49,7 @@ def main():
         print("❌ Erro: GITHUB_EVENT_PATH não encontrado.")
         return
 
+    # 1. Carregar Payload do GitHub Event
     try:
         with open(EVENT_PATH, 'r') as f:
             event_data = json.load(f)
@@ -63,6 +65,7 @@ def main():
 
     print(f"📦 Processando Asset ID: {ORIGINAL_ID} para {PLAYER_NAME}")
 
+    # 2. Download do Asset Original
     file_path = "item.rbxm"
     r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
     if r_down.status_code == 200:
@@ -73,6 +76,7 @@ def main():
         print(f"❌ Falha no download: {r_down.status_code}")
         return
 
+    # 3. Upload para o Grupo Roblox (MIME Type model/x-rbxm)
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
         "assetType": "Model",
@@ -97,6 +101,7 @@ def main():
         notify_roblox("error", target_user_id=TARGET_USER_ID)
         return
 
+    # 4. Polling para obter o ID Final
     final_asset_id = "N/A"
     if operation_path:
         for i in range(10):
@@ -110,7 +115,7 @@ def main():
                     print(f"✅ Sucesso! Novo ID: {final_asset_id}")
                     break
     
-    # Obter imagem do item
+    # 5. Formatação do Webhook (Modelo Antigo com Imagem e Fields)
     thumbnail_url = get_asset_thumbnail(final_asset_id)
     display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
     
@@ -129,6 +134,7 @@ def main():
         }]
     }
 
+    # Disparar para os dois destinos
     targets = [ADMIN_WEBHOOK]
     if PLAYER_WEBHOOK:
         targets.append(PLAYER_WEBHOOK)
@@ -136,9 +142,10 @@ def main():
     for webhook_url in targets:
         try:
             requests.post(webhook_url, json=embed_payload)
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️ Erro ao enviar webhook: {e}")
 
+    # Notificação final para o jogo
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
     print("🏁 Processo finalizado.")
 
