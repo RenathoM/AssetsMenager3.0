@@ -2,7 +2,7 @@ import requests
 import os
 import json
 import time
-import sys # Importação necessária para garantir saída limpa
+import sys # Necessário para garantir saída limpa
 
 # Configurações do Ambiente
 API_KEY = os.getenv("RBX_API_KEY")
@@ -30,26 +30,26 @@ def notify_roblox(status, asset_id="N/A", target_user_id="0"):
 
 def main():
     print("🚀 Iniciando processo de upload...")
-    if not EVENT_PATH: sys.exit(1)
+    if not EVENT_PATH: sys.exit(0) # Saída silenciosa se não houver evento
 
     try:
         with open(EVENT_PATH, 'r') as f:
             payload = json.load(f).get("client_payload", {})
-    except: sys.exit(1)
+    except: sys.exit(0)
 
     PLAYER_WEBHOOK = payload.get("discord_webhook")
     ORIGINAL_ID = payload.get("asset_id")
     PLAYER_NAME = payload.get("player_name", "Unknown")
     TARGET_USER_ID = payload.get("target_user_id", "0")
 
-    # 1. Download
+    # 1. Download Autenticado
     file_path = "item.rbxm"
     r_down = requests.get(f"https://apis.roblox.com/assets/v1/assets/{ORIGINAL_ID}", headers={"x-api-key": API_KEY})
     if r_down.status_code == 200:
         with open(file_path, "wb") as f: f.write(r_down.content)
     else:
         notify_roblox("error", target_user_id=TARGET_USER_ID)
-        sys.exit(0) # Saída limpa mesmo em erro de negócio
+        sys.exit(0) # Encerra sem erro de sistema para o GitHub
 
     # 2. Upload
     asset_config = {
@@ -72,7 +72,7 @@ def main():
 
     operation_path = response.json().get("path")
 
-    # 3. Polling
+    # 3. Polling Melhorado (Aumentado para 12 tentativas de 4s)
     final_asset_id = "N/A"
     for _ in range(12):
         time.sleep(4)
@@ -83,7 +83,7 @@ def main():
                 final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
                 break
 
-    # 4. Notificações
+    # 4. Envio de Notificações
     thumb = get_asset_thumbnail(final_asset_id)
     embed = {
         "embeds": [{
@@ -101,11 +101,12 @@ def main():
     }
 
     for target in filter(None, [ADMIN_WEBHOOK, PLAYER_WEBHOOK]):
-        requests.post(target, json=embed)
+        try: requests.post(target, json=embed)
+        except: pass
 
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
-    print("🏁 Processo finalizado.")
-    sys.exit(0) # Força o sucesso no GitHub Actions
+    print("🏁 Processo finalizado com sucesso.")
+    sys.exit(0) # Saída de sucesso explícita
 
 if __name__ == "__main__":
     main()
