@@ -22,9 +22,9 @@ def notify_roblox(status, asset_id="N/A"):
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
     data = {
         "message": json.dumps({
-            "playerId": TARGET_USER_ID,
+            "playerId": str(TARGET_USER_ID),
             "status": status,
-            "assetId": asset_id
+            "assetId": str(asset_id)
         })
     }
     requests.post(url, headers={"x-api-key": API_KEY, "Content-Type": "application/json"}, json=data)
@@ -41,7 +41,7 @@ def main():
         notify_roblox("error")
         return
 
-    # 2. Upload para o Roblox
+    # 2. Upload para o Roblox (CORRIGIDO: Apenas um envio com os headers corretos)
     url = "https://apis.roblox.com/assets/v1/assets"
     
     asset_config = {
@@ -54,8 +54,7 @@ def main():
     }
     
     with open(file_path, "rb") as f:
-        # A chave aqui é o Content-Type 'application/octet-stream' 
-        # e garantir que o nome do arquivo termine em .rbxm
+        # A chave é usar 'application/octet-stream' e o nome do arquivo .rbxm
         files = {
             "request": (None, json.dumps(asset_config), "application/json"),
             "fileContent": ("model.rbxm", f, "application/octet-stream")
@@ -67,13 +66,11 @@ def main():
             files=files
         )
     
-    with open(file_path, "rb") as f:
-        files = {
-            "request": (None, json.dumps(asset_config), "application/json"),
-            "fileContent": (file_path, f, "model/x-rbxm")
-        }
-        response = requests.post(url, headers={"x-api-key": API_KEY}, files=files)
-    
+    if response.status_code != 200:
+        print(f"Erro no Upload: {response.text}")
+        notify_roblox("error")
+        return
+
     res_data = response.json()
     operation_path = res_data.get("path")
     final_asset_id = "N/A"
@@ -86,13 +83,14 @@ def main():
             op_data = op_res.json()
             if op_data.get("done"):
                 final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
+                # IMPORTANTE: Print para o GitHub Actions ler o ID
+                print(f"ASSET_ID={final_asset_id}")
                 break
     
     success = final_asset_id != "N/A"
     
-    # 4. Envio para o Discord com Link Automático
+    # 4. Envio para o Discord
     if WEBHOOK_URL:
-        # Criação do link no formato Markdown solicitado
         roblox_url = f"https://www.roblox.com/library/{final_asset_id}"
         display_id = f"[{final_asset_id}]({roblox_url})" if success else "`N/A`"
 
