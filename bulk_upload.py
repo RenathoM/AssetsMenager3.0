@@ -18,7 +18,6 @@ PLAYER_NAME = payload.get("player_name", "Unknown")
 TARGET_USER_ID = payload.get("target_user_id")
 
 def notify_roblox(status, asset_id="N/A"):
-    """ Envia o feedback para o jogo via MessagingService """
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
     data = {
         "message": json.dumps({
@@ -31,9 +30,8 @@ def notify_roblox(status, asset_id="N/A"):
 
 def main():
     file_path = "item.rbxm"
-    
-    # 1. Download do Asset Original
     r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
+    
     if r_down.status_code == 200:
         with open(file_path, "wb") as f:
             f.write(r_down.content)
@@ -41,33 +39,21 @@ def main():
         notify_roblox("error")
         return
 
-    # 2. Upload para o Roblox (CORRIGIDO: Apenas um envio com os headers corretos)
     url = "https://apis.roblox.com/assets/v1/assets"
-    
     asset_config = {
         "assetType": "Model",
         "displayName": f"Asset_{ORIGINAL_ID}",
-        "description": "Exported via AssetManager 4.0",
-        "creationContext": {
-            "creator": {"groupId": str(MY_GROUP_ID)}
-        }
+        "creationContext": {"creator": {"groupId": str(MY_GROUP_ID)}}
     }
     
     with open(file_path, "rb") as f:
-        # A chave é usar 'application/octet-stream' e o nome do arquivo .rbxm
         files = {
             "request": (None, json.dumps(asset_config), "application/json"),
             "fileContent": ("model.rbxm", f, "application/octet-stream")
         }
-        
-        response = requests.post(
-            url, 
-            headers={"x-api-key": API_KEY}, 
-            files=files
-        )
+        response = requests.post(url, headers={"x-api-key": API_KEY}, files=files)
     
     if response.status_code != 200:
-        print(f"Erro no Upload: {response.text}")
         notify_roblox("error")
         return
 
@@ -75,7 +61,6 @@ def main():
     operation_path = res_data.get("path")
     final_asset_id = "N/A"
 
-    # 3. Polling para obter o ID Final
     if operation_path:
         for _ in range(15):
             time.sleep(2)
@@ -83,31 +68,15 @@ def main():
             op_data = op_res.json()
             if op_data.get("done"):
                 final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                # IMPORTANTE: Print para o GitHub Actions ler o ID
+                # ESSENCIAL: Print para o GitHub Actions capturar
                 print(f"ASSET_ID={final_asset_id}")
                 break
     
     success = final_asset_id != "N/A"
-    
-    # 4. Envio para o Discord
     if WEBHOOK_URL:
         roblox_url = f"https://www.roblox.com/library/{final_asset_id}"
-        display_id = f"[{final_asset_id}]({roblox_url})" if success else "`N/A`"
+        requests.post(WEBHOOK_URL, json={"content": f"✅ Asset Processed: {roblox_url}"})
 
-        embed = {
-            "title": "📦 Asset Processed!",
-            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
-            "color": 3066993 if success else 15158332,
-            "fields": [
-                {"name": "Status", "value": "✅ Success" if success else "❌ Failed", "inline": True},
-                {"name": "Final ID", "value": display_id, "inline": True},
-                {"name": "Player", "value": PLAYER_NAME, "inline": True}
-            ],
-            "footer": {"text": "Sent via AssetManager 4.0"}
-        }
-        requests.post(WEBHOOK_URL, json={"embeds": [embed]})
-
-    # 5. Notifica o Jogo
     notify_roblox("success" if success else "error", final_asset_id)
 
 if __name__ == "__main__":
