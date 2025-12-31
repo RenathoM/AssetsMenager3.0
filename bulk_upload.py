@@ -84,31 +84,58 @@ def main():
         notify_roblox("error", target_user_id=TARGET_USER_ID)
         return # Para o script aqui se falhar
 
-    # 4. Envio para o Discord (Sempre funciona, independente do jogo)
-    if WEBHOOK_URL:
-        roblox_url = f"https://www.roblox.com/library/{final_asset_id}"
-        display_id = f"[{final_asset_id}]({roblox_url})" if success else "`N/A`"
-
-        embed = {
-            "title": ":package: Asset Processed!",
-            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
-            "color": 3066993 if success else 15158332,
-            "fields": [
-                {"name": "Status", "value": ":white_check_mark: Success" if success else ":x: Failed", "inline": True},
-                {"name": "Final ID", "value": display_id, "inline": True},
-                {"name": "Player", "value": PLAYER_NAME, "inline": True}
-            ],
-            "footer": {"text": "Sent via AssetManager 4.0"}
+    # 4. Polling (Só entra aqui se operation_path existir)
+    final_asset_id = "N/A"
+    if operation_path:
+        for i in range(10):
+            time.sleep(3)
+            print(f"⏱️ Verificando status (tentativa {i+1})...")
+            op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers={"x-api-key": API_KEY})
+            if op_res.status_code == 200:
+                op_data = op_res.json()
+                if op_data.get("done"):
+                    final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
+                    print(f"✅ Sucesso! Novo ID: {final_asset_id}")
+                    break
     
-    # 5. Discord e Finalização
-    if WEBHOOK_URL and final_asset_id != "N/A":
+   # 5. Envio para o Discord (Modelo Antigo com Fields)
+    if WEBHOOK_URL:
+        # Link clicável para o ID final
+        display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
+        
         embed = {
             "title": "📦 Asset Processado!",
-            "description": f"Jogador: **{PLAYER_NAME}**\nLink: [Clique Aqui](https://www.roblox.com/library/{final_asset_id})",
-            "color": 3066993
+            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
+            "color": 3066993 if final_asset_id != "N/A" else 15158332,
+            "fields": [
+                {
+                    "name": "Status",
+                    "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed",
+                    "inline": True
+                },
+                {
+                    "name": "Final ID",
+                    "value": display_id,
+                    "inline": True
+                },
+                {
+                    "name": "Player",
+                    "value": PLAYER_NAME,
+                    "inline": True
+                }
+            ],
+            "footer": {
+                "text": "Sent via AssetManager 4.0"
+            }
         }
-        requests.post(WEBHOOK_URL, json={"embeds": [embed]})
+        
+        try:
+            requests.post(WEBHOOK_URL, json={"embeds": [embed]})
+            print("✉️ Webhook enviado no modelo antigo.")
+        except Exception as e:
+            print(f"❌ Erro ao enviar webhook: {e}")
 
+    # Notifica o Roblox via Messaging Service
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
     print("🏁 Processo finalizado.")
 
