@@ -14,7 +14,7 @@ WEBHOOK_URL = payload.get("discord_webhook")
 def main():
     # Detecta o arquivo no repositório
     file_path = "assets.rbxm" if os.path.exists("assets.rbxm") else "default.rbxm"
-    msg = "Processado com sucesso!"
+    msg = "Processed successfully!"
     new_id = "N/A"
 
     try:
@@ -23,7 +23,7 @@ def main():
         asset_config = {
             "assetType": "Model",
             "displayName": f"Pacote: {payload.get('asset_id')}",
-            "description": f"Este item foi gerado para {payload.get('player_name')}.",
+            "description": f"This item was generated for {payload.get('player_name')}.",
             "creationContext": {
                 "creator": {
                     "groupId": str(MY_GROUP_ID) # Alterado de userId para groupId
@@ -45,19 +45,19 @@ def main():
                 msg = f"Erro no Upload: {response.status_code} - {response.text}"
 
     except Exception as e:
-        msg = f"Erro Crítico: {str(e)}"
+        msg = f"Critical Error: {str(e)}"
 
     # Envio para o Discord (Mantido igual)
     if WEBHOOK_URL:
         embed = {
             "title": "📦 Your Asset Is Ready!",
-            "description": f"Olá **{payload.get('player_name')}**, seu arquivo foi gerado e enviado para o grupo!",
+            "description": f"Wsp **{payload.get('player_name')}**, your file has been generated and sent to the group.!",
             "color": 3066993,
             "fields": [
-                {"name": "ID Original", "value": f"`{payload.get('asset_id')}`", "inline": True},
-                {"name": "Novo ID (Grupo)", "value": f"`{new_id}`", "inline": True}
+                {"name": "Original ID", "value": f"`{payload.get('asset_id')}`", "inline": True},
+                {"name": "New ID (Grupo)", "value": f"`{new_id}`", "inline": True}
             ],
-            "footer": {"text": "Enviado via AssetManager 3.0"}
+            "footer": {"text": "Sent via AssetManager 4.0"}
         }
 
         if os.path.exists(file_path):
