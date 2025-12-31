@@ -41,12 +41,7 @@ jobs:
             exit 1
           fi
 
-      - name: Notify Roblox Messaging Service
-        if: success()
-        run: |
-          curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/103111986841337/topics/AssetUploadFeedback" \
-            -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"message\": \"{\\\"playerId\\\": \\\"${{ github.event.client_payload.target_user_id }}\\\", \\\"status\\\": \\\"success\\\"}\"
-            }"
+      - name: Run Upload Script
+        env:
+          RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: python bulk_upload.py
