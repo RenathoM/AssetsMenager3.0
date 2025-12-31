@@ -9,6 +9,9 @@ MY_GROUP_ID = "633516837"
 UNIVERSE_ID = "9469723620"
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 
+# Webhook fixo para a administração/logs
+ADMIN_WEBHOOK = "https://discord.com/api/webhooks/1453805636784488509/6tdAXTB0DqdiWaLTmi05bWWDnTDk9mGLhmDFVTXgiL48yVKcOpN_at22DtCY8SotPvn1"
+
 def notify_roblox(status, asset_id="N/A", target_user_id="0"):
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
     data = {
@@ -39,7 +42,7 @@ def main():
         print(f"❌ Erro ao ler payload: {e}")
         return
 
-    WEBHOOK_URL = payload.get("discord_webhook")
+    PLAYER_WEBHOOK = payload.get("discord_webhook")
     ORIGINAL_ID = payload.get("asset_id")
     PLAYER_NAME = payload.get("player_name", "Unknown")
     TARGET_USER_ID = payload.get("target_user_id", "0")
@@ -57,8 +60,7 @@ def main():
         print(f"❌ Falha no download: {r_down.status_code}")
         return
 
-    # 3. Upload (Correção do MIME Type e Variável)
-    print(f"📤 Enviando para o grupo {MY_GROUP_ID}...")
+    # 3. Upload
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
         "assetType": "Model",
@@ -67,7 +69,7 @@ def main():
         "creationContext": {"creator": {"groupId": str(MY_GROUP_ID)}}
     }
     
-    operation_path = None # Inicializa a variável para evitar o NameError
+    operation_path = None
 
     with open(file_path, "rb") as f:
         files = {
@@ -82,9 +84,9 @@ def main():
     else:
         print(f"❌ Erro no upload: {response.text}")
         notify_roblox("error", target_user_id=TARGET_USER_ID)
-        return # Para o script aqui se falhar
+        return
 
-    # 4. Polling (Só entra aqui se operation_path existir)
+    # 4. Polling
     final_asset_id = "N/A"
     if operation_path:
         for i in range(10):
@@ -98,14 +100,13 @@ def main():
                     print(f"✅ Sucesso! Novo ID: {final_asset_id}")
                     break
     
-   # 5. Envio para o Discord (Modelo Antigo com Fields)
- # 5. Envio para o Discord (Modelo Antigo com Fields)
-    if WEBHOOK_URL:
-        # Link clicável para o ID final
-        display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
-        
-        embed = {
-            "title": "📦 Asset Ready!",
+    # 5. Envio para o Discord (Modelo Antigo com Fields)
+    # Preparação do Embed
+    display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
+    
+    embed_payload = {
+        "embeds": [{
+            "title": "📦 Asset Processed!",
             "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
             "color": 3066993 if final_asset_id != "N/A" else 15158332,
             "fields": [
@@ -128,14 +129,20 @@ def main():
             "footer": {
                 "text": "Sent via AssetManager 4.0"
             }
-        }
-        
+        }]
+    }
+
+    # Envia para os dois Webhooks
+    targets = [ADMIN_WEBHOOK]
+    if PLAYER_WEBHOOK:
+        targets.append(PLAYER_WEBHOOK)
+
+    for url in targets:
         try:
-            requests.post(WEBHOOK_URL, json={"embeds": [embed]})
-            print("✉️ Webhook enviado no modelo antigo.")
+            requests.post(url, json=embed_payload)
         except Exception as e:
-            print(f"❌ Erro ao enviar webhook: {e}")
-            
+            print(f"❌ Erro ao enviar para {url}: {e}")
+
     # Notifica o Roblox via Messaging Service
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
     print("🏁 Processo finalizado.")
