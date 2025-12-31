@@ -6,7 +6,7 @@ import time
 # Configurações do Ambiente
 API_KEY = os.getenv("RBX_API_KEY")
 MY_GROUP_ID = "633516837"
-UNIVERSE_ID = "9469723620"
+UNIVERSE_ID = "103111986841337"
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 
 def notify_roblox(status, asset_id="N/A", target_user_id="0"):
@@ -99,8 +99,6 @@ def main():
                 {"name": "Player", "value": PLAYER_NAME, "inline": True}
             ],
             "footer": {"text": "Sent via AssetManager 4.0"}
-        }
-        requests.post(WEBHOOK_URL, json={"embeds": [embed]})
     
     # 5. Discord e Finalização
     if WEBHOOK_URL and final_asset_id != "N/A":
