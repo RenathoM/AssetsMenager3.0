@@ -19,17 +19,7 @@ jobs:
       - name: Install Requests
         run: pip install requests
 
-      - name: Run Upload and Distribute
-        id: upload_step
+      - name: Run Upload Script
         env:
-          # Centralizamos todas as variáveis aqui
           RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          # O script Python lê os outros dados direto do GITHUB_EVENT_PATH
-        run: |
-          if [ -f "bulk_upload.py" ]; then
-            # Executamos o script apenas uma vez
-            python bulk_upload.py
-          else
-            echo "❌ Erro: bulk_upload.py não encontrado!"
-            exit 1
-          fi
+        run: python bulk_upload.py  # Removido o 'if' para forçar o erro se faltar o arquivo
