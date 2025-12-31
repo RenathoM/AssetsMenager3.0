@@ -42,10 +42,26 @@ jobs:
             echo "No .rbxm files found to send."
           fi
 
+      - name: Run Upload Script
+        env:
+          ROBLOX_COOKIE: ${{ secrets.ROBLOX_COOKIE }}
+          GROUP_ID: ${{ secrets.GROUP_ID }}
+          RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          ASSET_ID: ${{ github.event.client_payload.asset_id }}
+          WEBHOOK_URL: ${{ github.event.client_payload.discord_webhook }}
+        run: |
+          # Verifica se o arquivo existe antes de rodar
+          if [ -f "bulk_upload.py" ]; then
+            python bulk_upload.py
+          else
+            echo "❌ Erro: Arquivo bulk_upload.py não encontrado no repositório!"
+            exit 1
+          fi
+
       - name: Notify Roblox Messaging Service
         if: success()
         run: |
-          curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/${{ github.event.client_payload.experiment_id }}/topics/AssetUploadFeedback" \
+          curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/103111986841337/topics/AssetUploadFeedback" \
             -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d "{
