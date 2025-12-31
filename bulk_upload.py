@@ -65,13 +65,14 @@ def main():
         "creationContext": {"creator": {"groupId": str(MY_GROUP_ID)}}
     }
     
-    # Abrimos o arquivo aqui para garantir que ele seja lido do zero
+    # IMPORTANTE: Revertemos para model/x-rbxm
     with open(file_path, "rb") as model_file:
+        content = model_file.read()
         files = {
-        "request": (None, json.dumps(asset_config), "application/json"),
-        "fileContent": ("model.rbxm", model_file, "application/octet-stream") # Alterado para stream genérico
-    }
-        print("⚙️ Enviando para Roblox...")
+            "request": (None, json.dumps(asset_config), "application/json"),
+            "fileContent": ("model.rbxm", content, "model/x-rbxm")
+        }
+        print("⚙️ Enviando para Roblox com cabeçalho model/x-rbxm...")
         response = requests.post("https://apis.roblox.com/assets/v1/assets", 
                                  headers={"x-api-key": API_KEY}, 
                                  files=files)
