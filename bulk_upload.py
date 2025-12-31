@@ -57,9 +57,10 @@ def main():
         notify_roblox("error", target_user_id=TARGET_USER_ID)
         return
 
-    # 3. Upload para Roblox
+    # 3. Upload para Roblox (CORRIGIDO)
     print(f"📤 Enviando para o grupo {MY_GROUP_ID}...")
     url = "https://apis.roblox.com/assets/v1/assets"
+    
     asset_config = {
         "assetType": "Model",
         "displayName": f"Asset_{ORIGINAL_ID}",
@@ -68,18 +69,24 @@ def main():
     }
     
     with open(file_path, "rb") as f:
+        # Mudamos o MIME Type aqui para 'model/x-rbxm'
         files = {
             "request": (None, json.dumps(asset_config), "application/json"),
-            "fileContent": ("model.rbxm", f, "application/octet-stream")
+            "fileContent": ("model.rbxm", f, "model/x-rbxm")
         }
         response = requests.post(url, headers={"x-api-key": API_KEY}, files=files)
 
     if response.status_code != 200:
         print(f"❌ Erro no upload: {response.text}")
-        return
-
-    operation_path = response.json().get("path")
-    print(f"⚙️ Operação iniciada: {operation_path}")
+        # Tenta uma segunda vez com 'application/xml' caso o anterior falhe
+        print("🔄 Tentando com application/xml...")
+        f.seek(0)
+        files["fileContent"] = ("model.rbxm", f, "application/xml")
+        response = requests.post(url, headers={"x-api-key": API_KEY}, files=files)
+        
+        if response.status_code != 200:
+            print(f"❌ Falha definitiva: {response.text}")
+            return
 
     # 4. Polling
     final_asset_id = "N/A"
