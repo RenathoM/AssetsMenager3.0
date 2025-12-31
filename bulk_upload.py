@@ -68,10 +68,6 @@ def main():
         print(f"Erro no upload: {response.text}")
         return
 
-    res_data = response.json()
-    operation_path = res_data.get("path")
-    final_asset_id = "N/A"
-
     # 3. Polling para obter o ID Final (Indentações Corrigidas)
     if operation_path:
         for _ in range(15):
