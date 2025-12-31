@@ -18,7 +18,7 @@ PLAYER_NAME = payload.get("player_name", "Unknown")
 TARGET_USER_ID = payload.get("target_user_id")
 
 def notify_roblox(status, asset_id="N/A"):
-    """ Envia o feedback diretamente para o jogo """
+    """Envia feedback via MessagingService para o servidor Roblox"""
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
     data = {
         "message": json.dumps({
@@ -32,7 +32,7 @@ def notify_roblox(status, asset_id="N/A"):
 def main():
     file_path = "item.rbxm"
     
-    # 1. Download do Asset
+    # 1. Download do Asset Original
     r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
     if r_down.status_code == 200:
         with open(file_path, "wb") as f:
@@ -41,7 +41,7 @@ def main():
         notify_roblox("error")
         return
 
-    # 2. Upload para o Roblox (Apenas UM envio correto)
+    # 2. Upload para o Roblox (Apenas um envio com as configurações corretas)
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
         "assetType": "Model",
@@ -60,11 +60,11 @@ def main():
         notify_roblox("error")
         return
 
+    # 3. Polling para obter o ID Final
     res_data = response.json()
     operation_path = res_data.get("path")
     final_asset_id = "N/A"
 
-    # 3. Polling para obter o ID Final
     if operation_path:
         for _ in range(15):
             time.sleep(2)
@@ -72,16 +72,18 @@ def main():
             op_data = op_res.json()
             if op_data.get("done"):
                 final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                # ESTA LINHA É ESSENCIAL PARA O GITHUB:
+                # ESSENCIAL: Print para o GitHub Actions ler o ID
                 print(f"ASSET_ID={final_asset_id}")
                 break
     
-    # 4. Notificações
     success = final_asset_id != "N/A"
+    
+    # Notifica o Discord se houver sucesso
     if WEBHOOK_URL and success:
         lib_url = f"https://www.roblox.com/library/{final_asset_id}"
-        requests.post(WEBHOOK_URL, json={"content": f"✅ Asset Processado para **{PLAYER_NAME}**! ID: {final_asset_id}\nLink: {lib_url}"})
+        requests.post(WEBHOOK_URL, json={"content": f"✅ Asset Gerado: {lib_url}"})
 
+    # Notifica o jogo via API
     notify_roblox("success" if success else "error", final_asset_id)
 
 if __name__ == "__main__":
