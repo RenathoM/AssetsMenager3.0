@@ -97,7 +97,7 @@ def main():
                 # ESSENCIAL: Imprime para o GitHub Actions capturar o ID
                 print(f"ASSET_ID={final_asset_id}")
                 break
-    success = final_asset_id != "N/A"
+                
      # 5. Envio para o Discord (Sempre funciona, independente do jogo)
     if WEBHOOK_URL:
         roblox_url = f"https://www.roblox.com/library/{final_asset_id}"
