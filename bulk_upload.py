@@ -43,14 +43,29 @@ def main():
 
     # 2. Upload para o Roblox
     url = "https://apis.roblox.com/assets/v1/assets"
+    
     asset_config = {
-    "assetType": "Model", # Garante que seja um modelo comum
-    "displayName": f"Asset_{ORIGINAL_ID}",
-    "creationContext": {
-        "creator": {"groupId": str(MY_GROUP_ID)},
-        "expectedPrice": 0 # Define como gratuito para facilitar o acesso
+        "assetType": "Model",
+        "displayName": f"Asset_{ORIGINAL_ID}",
+        "description": "Exported via AssetManager 4.0",
+        "creationContext": {
+            "creator": {"groupId": str(MY_GROUP_ID)}
+        }
     }
-}
+    
+    with open(file_path, "rb") as f:
+        # A chave aqui é o Content-Type 'application/octet-stream' 
+        # e garantir que o nome do arquivo termine em .rbxm
+        files = {
+            "request": (None, json.dumps(asset_config), "application/json"),
+            "fileContent": ("model.rbxm", f, "application/octet-stream")
+        }
+        
+        response = requests.post(
+            url, 
+            headers={"x-api-key": API_KEY}, 
+            files=files
+        )
     
     with open(file_path, "rb") as f:
         files = {
