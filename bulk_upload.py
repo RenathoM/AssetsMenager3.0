@@ -44,10 +44,13 @@ def main():
     # 2. Upload para o Roblox
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
-        "assetType": "Model",
-        "displayName": f"Asset_{ORIGINAL_ID}",
-        "creationContext": {"creator": {"groupId": str(MY_GROUP_ID)}}
+    "assetType": "Model", # Garante que seja um modelo comum
+    "displayName": f"Asset_{ORIGINAL_ID}",
+    "creationContext": {
+        "creator": {"groupId": str(MY_GROUP_ID)},
+        "expectedPrice": 0 # Define como gratuito para facilitar o acesso
     }
+}
     
     with open(file_path, "rb") as f:
         files = {
