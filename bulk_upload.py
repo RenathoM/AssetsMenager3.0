@@ -72,8 +72,10 @@ def main():
             "fileContent": ("model.rbxm", model_file, "model/x-rbxm")
         }
         print("⚙️ Enviando para Roblox...")
-        response = requests.post("https://apis.roblox.com/assets/v1/assets", headers={"x-api-key": API_KEY}, files=files)
-
+        response = requests.post("https://apis.roblox.com/assets/v1/assets", 
+                                 headers={"x-api-key": API_KEY}, 
+                                 files=files)
+        
     if response.status_code != 200:
         print(f"❌ Erro Upload: {response.text}")
         return
