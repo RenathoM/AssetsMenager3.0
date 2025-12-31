@@ -25,15 +25,28 @@ jobs:
           RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
           GROUP_ID: ${{ secrets.GROUP_ID }}
         run: |
+          # 1. Executa o python e guarda o output
+          # O script Python deve conter print(f"ASSET_ID={final_asset_id}")
           python bulk_upload.py > output.txt
           cat output.txt
+          
+          # 2. Extrai o ID do ficheiro de texto e guarda nas variáveis do Github
           NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt || echo "")
           echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
 
       - name: Notify Roblox Messaging Service
+        # Só envia se o upload tiver tido sucesso (ID encontrado)
         if: env.NEW_ASSET_ID != ''
         run: |
           curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/103111986841337/topics/AssetUploadFeedback" \
           -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
           -H "Content-Type: application/json" \
           -d "{\"message\": \"{\\\"playerId\\\":\\\"${{ github.event.client_payload.target_user_id }}\\\",\\\"status\\\":\\\"success\\\",\\\"assetId\\\":\\\"${{ env.NEW_ASSET_ID }}\\\"}\"}"
+
+      - name: Notify Failure
+        if: env.NEW_ASSET_ID == ''
+        run: |
+          curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/103111986841337/topics/AssetUploadFeedback" \
+          -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d "{\"message\": \"{\\\"playerId\\\":\\\"${{ github.event.client_payload.target_user_id }}\\\",\\\"status\\\":\\\"error\\\"}\"}"
