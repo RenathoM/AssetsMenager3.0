@@ -106,15 +106,22 @@ def main():
     if operation_path:
         for i in range(10):
             time.sleep(3)
-            print(f"⏱️ Verificando status (tentativa {i+1})...")
             op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers={"x-api-key": API_KEY})
             if op_res.status_code == 200:
                 op_data = op_res.json()
                 if op_data.get("done"):
                     final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                    print(f"✅ Sucesso! Novo ID: {final_asset_id}")
                     break
-    
+
+    # 4.1 TENTATIVA DE TORNAR PÚBLICO (NOVO)
+    if final_asset_id != "N/A":
+        try:
+            patch_url = f"https://apis.roblox.com/assets/v1/assets/{final_asset_id}"
+            patch_data = {"isPublicDomain": True}
+            requests.patch(patch_url, headers={"x-api-key": API_KEY}, json=patch_data)
+        except:
+            print("⚠️ Não foi possível forçar a publicação automática.")
+            
     # 5. Formatação do Webhook (Modelo Antigo com Imagem e Fields)
     thumbnail_url = get_asset_thumbnail(final_asset_id)
     display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
