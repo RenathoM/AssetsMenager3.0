@@ -19,20 +19,16 @@ jobs:
       - name: Install Requests
         run: pip install requests
 
-      - name: Run Unified Upload Script
+      - name: Run Upload Script
         id: upload_step
         env:
           RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          GROUP_ID: ${{ secrets.GROUP_ID }}
+          # O script Python usará as variáveis enviadas pelo 'client_payload' do Roblox
         run: |
           if [ -f "bulk_upload.py" ]; then
-            # Executa o python e captura o ID impresso por ele
-            python bulk_upload.py > output.txt
-            cat output.txt
-            
-            # Extrai o ID (Ex: ASSET_ID=123456)
-            NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt || echo "")
-            echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
+            # Apenas executa o script. O feedback agora é via Discord (se configurado)
+            # e o tempo de espera é controlado pelo cliente no Roblox.
+            python bulk_upload.py
           else
             echo "❌ Erro: bulk_upload.py não encontrado!"
             exit 1
