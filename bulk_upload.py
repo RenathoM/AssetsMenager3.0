@@ -6,7 +6,7 @@ import time
 # Configurações do Ambiente
 API_KEY = os.getenv("RBX_API_KEY")
 MY_GROUP_ID = "633516837"
-UNIVERSE_ID = "103111986841337"
+UNIVERSE_ID = "9469723620"
 event_path = os.getenv("GITHUB_EVENT_PATH")
 
 # Carrega os dados enviados pelo Roblox
