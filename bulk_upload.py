@@ -51,11 +51,11 @@ def main():
     if WEBHOOK_URL:
         embed = {
             "title": "📦 Your Asset Is Ready!",
-            "description": f"Wsp **{payload.get('player_name')}**, your file has been generated and sent to the group.!",
+            "description": f"Wsp **{payload.get('player_name')}!** Your file has been generated and sent to the group!",
             "color": 3066993,
             "fields": [
                 {"name": "Original ID", "value": f"`{payload.get('asset_id')}`", "inline": True},
-                {"name": "New ID (Grupo)", "value": f"`{new_id}`", "inline": True}
+                {"name": "New ID (Group)", "value": f"`{new_id}`", "inline": True}
             ],
             "footer": {"text": "Sent via AssetManager 4.0"}
         }
