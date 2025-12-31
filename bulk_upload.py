@@ -65,6 +65,11 @@ def main():
     operation_path = res_data.get("path")
     final_asset_id = "N/A"
 
+    if op_data.get("done"):
+    final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
+    print(f"ASSET_ID={final_asset_id}") # ESTA LINHA É OBRIGATÓRIA PARA O GITHUB
+    break
+
     if operation_path:
         for _ in range(15):
             time.sleep(2)
