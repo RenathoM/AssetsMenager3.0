@@ -55,7 +55,7 @@ def main():
         with open(file_path, "rb") as f:
             files = {
                 "request": (None, json.dumps(asset_config), "application/json"),
-                "fileContent": (file_path, f, "application/octet-stream")
+                "fileContent": (file_path, f, "model/x-rbxm") # CORRIGIDO AQUI
             }
             
             # O Open Cloud requer a API Key no header x-api-key
