@@ -22,4 +22,5 @@ jobs:
       - name: Run Upload Script
         env:
           RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-        run: python bulk_upload.py  # Removido o 'if' para forçar o erro se faltar o arquivo
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: python bulk_upload.py
