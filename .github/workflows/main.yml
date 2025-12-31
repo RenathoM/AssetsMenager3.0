@@ -39,7 +39,6 @@ jobs:
           fi
 
       - name: Notify Roblox Messaging Service
-        # Envia a notificação apenas se o ID foi gerado com sucesso
         if: env.NEW_ASSET_ID != ''
         run: |
           curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/103111986841337/topics/AssetUploadFeedback" \
