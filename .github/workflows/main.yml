@@ -20,16 +20,7 @@ jobs:
         run: pip install requests
 
       - name: Run Upload Script
-        id: upload_step
         env:
           RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          # O script Python usará as variáveis enviadas pelo 'client_payload' do Roblox
-        run: |
-          if [ -f "bulk_upload.py" ]; then
-            # Apenas executa o script. O feedback agora é via Discord (se configurado)
-            # e o tempo de espera é controlado pelo cliente no Roblox.
-            python bulk_upload.py
-          else
-            echo "❌ Erro: bulk_upload.py não encontrado!"
-            exit 1
-          fi
+          GROUP_ID: ${{ secrets.GROUP_ID }} # ID do Grupo onde o asset será postado
+        run: python bulk_upload.py
