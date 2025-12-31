@@ -6,7 +6,7 @@ import time
 # Configurações do Ambiente
 API_KEY = os.getenv("RBX_API_KEY")
 MY_GROUP_ID = "633516837"
-UNIVERSE_ID = "103111986841337"
+UNIVERSE_ID = "9469723620"
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 
 def notify_roblox(status, asset_id="N/A", target_user_id="0"):
@@ -99,42 +99,20 @@ def main():
                     break
     
    # 5. Envio para o Discord (Modelo Antigo com Fields)
-    if WEBHOOK_URL:
-        # Link clicável para o ID final
-        display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
-        
-        embed = {
-            "title": "📦 Asset Processado!",
-            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
-            "color": 3066993 if final_asset_id != "N/A" else 15158332,
-            "fields": [
-                {
-                    "name": "Status",
-                    "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed",
-                    "inline": True
-                },
-                {
-                    "name": "Final ID",
-                    "value": display_id,
-                    "inline": True
-                },
-                {
-                    "name": "Player",
-                    "value": PLAYER_NAME,
-                    "inline": True
-                }
-            ],
-            "footer": {
-                "text": "Sent via AssetManager 4.0"
-            }
-        }
-        
-        try:
-            requests.post(WEBHOOK_URL, json={"embeds": [embed]})
-            print("✉️ Webhook enviado no modelo antigo.")
-        except Exception as e:
-            print(f"❌ Erro ao enviar webhook: {e}")
+   if WEBHOOK_URL:
+        roblox_url = f"https://www.roblox.com/library/{final_asset_id}"
+        display_id = f"[{final_asset_id}]({roblox_url})" if success else "`N/A`"
 
+        embed = {
+            "title": ":package: Asset Processed!",
+            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
+            "color": 3066993 if success else 15158332,
+            "fields": [
+                {"name": "Status", "value": ":white_check_mark: Success" if success else ":x: Failed", "inline": True},
+                {"name": "Final ID", "value": display_id, "inline": True},
+                {"name": "Player", "value": PLAYER_NAME, "inline": True}
+            ],
+            "footer": {"text": "Sent via AssetManager 4.0"}
     # Notifica o Roblox via Messaging Service
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
     print("🏁 Processo finalizado.")
