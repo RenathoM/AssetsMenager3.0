@@ -18,7 +18,6 @@ PLAYER_NAME = payload.get("player_name", "Unknown")
 TARGET_USER_ID = payload.get("target_user_id")
 
 def notify_roblox(status, asset_id="N/A"):
-    """Envia feedback via MessagingService para o servidor Roblox"""
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
     data = {
         "message": json.dumps({
@@ -32,7 +31,7 @@ def notify_roblox(status, asset_id="N/A"):
 def main():
     file_path = "item.rbxm"
     
-    # 1. Download do Asset Original
+    # 1. Download
     r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
     if r_down.status_code == 200:
         with open(file_path, "wb") as f:
@@ -41,7 +40,7 @@ def main():
         notify_roblox("error")
         return
 
-    # 2. Upload para o Roblox (Apenas um envio com as configurações corretas)
+    # 2. Upload (Corrigido para apenas um envio)
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
         "assetType": "Model",
@@ -60,16 +59,11 @@ def main():
         notify_roblox("error")
         return
 
-    # 3. Polling para obter o ID Final
     res_data = response.json()
     operation_path = res_data.get("path")
     final_asset_id = "N/A"
 
-    if op_data.get("done"):
-    final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-    print(f"ASSET_ID={final_asset_id}") # ESTA LINHA É OBRIGATÓRIA PARA O GITHUB
-    break
-
+    # 3. Polling (Indentação Corrigida)
     if operation_path:
         for _ in range(15):
             time.sleep(2)
@@ -77,18 +71,11 @@ def main():
             op_data = op_res.json()
             if op_data.get("done"):
                 final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                # ESSENCIAL: Print para o GitHub Actions ler o ID
                 print(f"ASSET_ID={final_asset_id}")
                 break
     
+    # 4. Feedback
     success = final_asset_id != "N/A"
-    
-    # Notifica o Discord se houver sucesso
-    if WEBHOOK_URL and success:
-        lib_url = f"https://www.roblox.com/library/{final_asset_id}"
-        requests.post(WEBHOOK_URL, json={"content": f"✅ Asset Gerado: {lib_url}"})
-
-    # Notifica o jogo via API
     notify_roblox("success" if success else "error", final_asset_id)
 
 if __name__ == "__main__":
