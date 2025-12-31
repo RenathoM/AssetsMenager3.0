@@ -6,7 +6,7 @@ import time
 # Configurações do Ambiente
 API_KEY = os.getenv("RBX_API_KEY")
 MY_GROUP_ID = "633516837"
-UNIVERSE_ID = "103111986841337"
+UNIVERSE_ID = "9469723620"
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 
 def notify_roblox(status, asset_id="N/A", target_user_id="0"):
@@ -84,21 +84,7 @@ def main():
         notify_roblox("error", target_user_id=TARGET_USER_ID)
         return # Para o script aqui se falhar
 
-    # 4. Polling (Só entra aqui se operation_path existir)
-    final_asset_id = "N/A"
-    if operation_path:
-        for _ in range(15):
-            time.sleep(2)
-            op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers={"x-api-key": API_KEY})
-            op_data = op_res.json()
-            
-            if op_data.get("done"):
-                final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                # ESSENCIAL: Imprime para o GitHub Actions capturar o ID
-                print(f"ASSET_ID={final_asset_id}")
-                break
-                
-     # 5. Envio para o Discord (Sempre funciona, independente do jogo)
+    # 4. Envio para o Discord (Sempre funciona, independente do jogo)
     if WEBHOOK_URL:
         roblox_url = f"https://www.roblox.com/library/{final_asset_id}"
         display_id = f"[{final_asset_id}]({roblox_url})" if success else "`N/A`"
@@ -113,6 +99,17 @@ def main():
                 {"name": "Player", "value": PLAYER_NAME, "inline": True}
             ],
             "footer": {"text": "Sent via AssetManager 4.0"}
+        }
+        requests.post(WEBHOOK_URL, json={"embeds": [embed]})
+    
+    # 5. Discord e Finalização
+    if WEBHOOK_URL and final_asset_id != "N/A":
+        embed = {
+            "title": "📦 Asset Processado!",
+            "description": f"Jogador: **{PLAYER_NAME}**\nLink: [Clique Aqui](https://www.roblox.com/library/{final_asset_id})",
+            "color": 3066993
+        }
+        requests.post(WEBHOOK_URL, json={"embeds": [embed]})
 
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID)
     print("🏁 Processo finalizado.")
