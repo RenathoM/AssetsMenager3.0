@@ -33,11 +33,11 @@ jobs:
           ASSET_ID: ${{ github.event.client_payload.asset_id }}
           WEBHOOK_URL: ${{ github.event.client_payload.discord_webhook }}
         run: |
-          # Verifica se o arquivo existe antes de rodar
+          
           if [ -f "bulk_upload.py" ]; then
             python bulk_upload.py
           else
-            echo "❌ Erro: Arquivo bulk_upload.py não encontrado no repositório!"
+            echo "❌ Erro: File bulk_upload.py not found in the repository!"
             exit 1
           fi
 
