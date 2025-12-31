@@ -62,8 +62,8 @@ def main():
     res_data = response.json()
     operation_path = res_data.get("path")
     final_asset_id = "N/A"
-
-    # 3. Polling (Indentação Corrigida)
+    
+   # 3. Polling para obter o ID Final (Dentro da função main)
     if operation_path:
         for _ in range(15):
             time.sleep(2)
@@ -71,7 +71,8 @@ def main():
             op_data = op_res.json()
             if op_data.get("done"):
                 final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                print(f"ASSET_ID={final_asset_id}")
+                # LINHA ESSENCIAL PARA O GITHUB:
+                print(f"ASSET_ID={final_asset_id}") 
                 break
     
     # 4. Feedback
