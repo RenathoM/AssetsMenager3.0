@@ -65,42 +65,29 @@ def main():
 
     print(f"📦 Processando Asset ID: {ORIGINAL_ID} para {PLAYER_NAME}")
 
-    # 2. Download do Asset Original
+    # 2. Download do Asset Original (Versão Autenticada)
+    print(f"📥 Baixando asset {ORIGINAL_ID}...")
     file_path = "item.rbxm"
-    r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
-    if r_down.status_code == 200:
-        with open(file_path, "wb") as f:
-            f.write(r_down.content)
-        print("✅ Download concluído.")
-    else:
-        print(f"❌ Falha no download: {r_down.status_code}")
-        return
-
-    # 3. Upload para o Grupo Roblox (MIME Type model/x-rbxm)
-    url = "https://apis.roblox.com/assets/v1/assets"
-    asset_config = {
-        "assetType": "Model",
-        "displayName": f"Asset_{ORIGINAL_ID}",
-        "description": f"Exported for {PLAYER_NAME}",
-        "creationContext": {"creator": {"groupId": str(MY_GROUP_ID)}}
-    }
     
-    operation_path = None
-    with open(file_path, "rb") as f:
-        files = {
-            "request": (None, json.dumps(asset_config), "application/json"),
-            "fileContent": ("model.rbxm", f, "model/x-rbxm")
-        }
-        response = requests.post(url, headers={"x-api-key": API_KEY}, files=files)
-
-    if response.status_code == 200:
-        operation_path = response.json().get("path")
-        print(f"⚙️ Operação iniciada: {operation_path}")
-    else:
-        print(f"❌ Erro no upload: {response.text}")
-        notify_roblox("error", target_user_id=TARGET_USER_ID)
+    # Usando o endpoint de download da API de Assets com a API Key
+    download_url = f"https://apis.roblox.com/assets/v1/assets/{ORIGINAL_ID}"
+    
+    try:
+        r_down = requests.get(download_url, headers={"x-api-key": API_KEY}, stream=True)
+        
+        if r_down.status_code == 200:
+            with open(file_path, "wb") as f:
+                f.write(r_down.content)
+            print("✅ Download concluído com sucesso.")
+        else:
+            print(f"❌ Falha no download: {r_down.status_code}")
+            print(f"Detalhes: {r_down.text}")
+            notify_roblox("error", target_user_id=TARGET_USER_ID)
+            return
+    except Exception as e:
+        print(f"❌ Erro na conexão de download: {e}")
         return
-
+        
     # 4. Polling para obter o ID Final
     final_asset_id = "N/A"
     if operation_path:
