@@ -5,7 +5,6 @@ import time
 
 # --- CONFIGURAÇÕES FIXAS ---
 MY_GROUP_ID = "633516837"
-UNIVERSE_ID = "9469723620"
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 
 def main():
@@ -13,10 +12,10 @@ def main():
 
     # 1. Validação do arquivo de evento do GitHub
     if not EVENT_PATH or not os.path.exists(EVENT_PATH):
-        print("❌ Erro: Arquivo de evento (GITHUB_EVENT_PATH) não encontrado.")
+        print("❌ Erro: GITHUB_EVENT_PATH não encontrado.")
         return
 
-    # 2. Leitura dos dados enviados pelo Roblox (Payload)
+    # 2. Leitura do Payload
     try:
         with open(EVENT_PATH, 'r') as f:
             event_data = json.load(f)
@@ -26,81 +25,73 @@ def main():
         return
 
     # 3. Seleção e Limpeza do Token
-    # Padrão para "Model" caso não seja enviado o tipo
     asset_type = payload.get("asset_type", "Model")
     token_env_name = f"RBX_TOKEN_{asset_type.upper()}"
     raw_token = os.getenv(token_env_name)
 
     if not raw_token:
-        print(f"❌ Erro Crítico: Secret {token_env_name} não encontrado no GitHub.")
+        print(f"❌ Erro Crítico: Secret {token_env_name} não encontrado.")
         return
 
-    # Limpeza profunda do token (remove espaços, quebras de linha e o prefixo 'Bearer' se existir)
+    # Limpeza total para evitar o erro 401: remove prefixos e espaços invisíveis
     clean_token = raw_token.strip().replace("Bearer ", "").replace("bearer ", "")
 
-    print(f"📦 Categoria detectada: {asset_type}")
+    print(f"📦 Categoria: {asset_type}")
     print(f"✅ Token carregado (Inicia com: {clean_token[:5]}...)")
 
-    # 4. Configuração da API de Assets da Roblox
+    # 4. Configuração da Requisição
     url = "https://apis.roblox.com/assets/v1/assets"
     
-    # IMPORTANTE: Deixe o 'requests' gerenciar o Content-Type para multipart/form-data
+    # Se você estiver usando API Key do Creator Hub, troque "Authorization" por "x-api-key"
+    # O erro 401 "Failed to read token" geralmente acontece por essa confusão de headers.
     headers = {
         "Authorization": f"Bearer {clean_token}"
     }
 
-    # Configuração do Asset (Metadados)
     asset_config = {
-        "assetType": "Model",
-        "displayName": f"Upload_{asset_type}_{int(time.time())}",
-        "description": "Auto-upload via GitHub Actions",
+        "assetType": asset_type,
+        "displayName": f"AutoUpload_{int(time.time())}",
+        "description": "Upload automático via GitHub Actions",
         "creationContext": {
             "creator": {"groupId": str(MY_GROUP_ID)}
         }
     }
 
-    # 5. Localização do arquivo binário
-    # O ls -R mostrou que o arquivo se chama 'assets.rbxm'
+    # 5. Verificação do arquivo local
     file_path = "assets.rbxm"
     if not os.path.exists(file_path):
-        print(f"❌ Erro: Arquivo '{file_path}' não encontrado no repositório.")
+        print(f"❌ Erro: Arquivo {file_path} não encontrado.")
         return
 
-    # 6. Execução do Upload Multipart
+    # 6. Upload Multipart
     try:
         with open(file_path, "rb") as f:
             files = {
                 "request": (None, json.dumps(asset_config), "application/json"),
-                # Alterado para model/x-rbxm conforme solicitado
                 "fileContent": (file_path, f, "model/x-rbxm")
             }
             
-            print(f"📡 Enviando {file_path} para a API da Roblox...")
+            print(f"📡 Enviando {file_path} para Roblox...")
             response = requests.post(url, headers=headers, files=files)
 
-        # 7. Tratamento de Resposta
+        # 7. Resposta e Polling
         if response.status_code == 200:
-            data = response.json()
-            operation_path = data.get("path")
-            print(f"✅ Sucesso! Operação criada: {operation_path}")
+            op_path = response.json().get("path")
+            print(f"✅ Operação iniciada: {op_path}")
             
-            # Opcional: Polling para esperar a conclusão
-            print("⏳ Aguardando processamento final...")
-            for i in range(5):
+            # Pequeno loop para verificar se o processamento terminou
+            for _ in range(3):
                 time.sleep(5)
-                check = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers=headers)
-                if check.status_code == 200:
-                    status_data = check.json()
-                    if status_data.get("done"):
-                        final_id = status_data.get("response", {}).get("assetId")
-                        print(f"🎉 Upload Concluído! Asset ID: {final_id}")
-                        break
+                check = requests.get(f"https://apis.roblox.com/assets/v1/{op_path}", headers=headers)
+                if check.ok and check.json().get("done"):
+                    asset_id = check.json().get("response", {}).get("assetId")
+                    print(f"🎉 Sucesso total! Novo Asset ID: {asset_id}")
+                    return
         else:
-            print(f"❌ Erro na API (Status {response.status_code})")
-            print(f"Detalhes: {response.text}")
+            print(f"❌ Erro {response.status_code}: {response.text}")
 
     except Exception as e:
-        print(f"❌ Erro fatal durante o upload: {e}")
+        print(f"❌ Erro fatal: {e}")
 
 if __name__ == "__main__":
     main()
