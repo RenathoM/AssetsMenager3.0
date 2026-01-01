@@ -23,14 +23,9 @@ def get_asset_thumbnail(asset_id):
     return None
 
 def notify_roblox(status, asset_id="N/A", target_user_id="0", token=None):
+    if not token: return
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
-    data = {
-        "message": json.dumps({
-            "playerId": str(target_user_id),
-            "status": status,
-            "assetId": str(asset_id)
-        })
-    }
+    data = {"message": json.dumps({"playerId": str(target_user_id), "status": status, "assetId": str(asset_id)})}
     try:
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         requests.post(url, headers=headers, json=data)
@@ -55,8 +50,10 @@ def main():
     token_env_name = f"RBX_TOKEN_{ASSET_CATEGORY.upper()}"
     USER_TOKEN = os.getenv(token_env_name)
 
+    # LOG DE DIAGNÓSTICO
     if not USER_TOKEN:
-        print(f"❌ Erro: Token para {ASSET_CATEGORY} ({token_env_name}) não configurado.")
+        print(f"❌ ERRO CRÍTICO: O Secret '{token_env_name}' não foi encontrado no ambiente!")
+        print(f"Verifique se você criou o Secret no GitHub com este nome EXATO.")
         return
 
     PLAYER_WEBHOOK = payload.get("discord_webhook")
@@ -64,24 +61,20 @@ def main():
     PLAYER_NAME = payload.get("player_name", "Unknown")
     TARGET_USER_ID = payload.get("target_user_id", "0")
 
-    roblox_asset_type = "Model"
-
     # Download
     file_path = "item.rbxm"
     r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
-    if r_down.status_code == 200:
-        with open(file_path, "wb") as f:
-            f.write(r_down.content)
-    else:
+    if r_down.status_code != 200:
         print(f"❌ Falha no download: {r_down.status_code}")
         return
+    with open(file_path, "wb") as f:
+        f.write(r_down.content)
 
     # Upload
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
-        "assetType": roblox_asset_type,
+        "assetType": "Model",
         "displayName": f"{ASSET_CATEGORY}_{ORIGINAL_ID}",
-        "description": f"Processed {ASSET_CATEGORY} for {PLAYER_NAME}",
         "creationContext": {"creator": {"groupId": str(MY_GROUP_ID)}}
     }
     
@@ -94,51 +87,44 @@ def main():
         }
         response = requests.post(url, headers=headers, files=files)
 
-    final_asset_id = "N/A"
-    if response.status_code == 200:
-        operation_path = response.json().get("path")
-        print(f"⚙️ Operação iniciada: {operation_path}")
-        
-        for i in range(10):
-            time.sleep(3)
-            op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers=headers)
-            if op_res.status_code == 200:
-                op_data = op_res.json()
-                if op_data.get("done"):
-                    final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                    print(f"✅ ASSET_ID={final_asset_id}")
-                    break
-    else:
-        print(f"❌ Erro no upload: {response.text}")
+    if response.status_code != 200:
+        print(f"❌ Erro na API do Roblox: {response.text}")
+        notify_roblox("error", target_user_id=TARGET_USER_ID, token=USER_TOKEN)
+        return
 
-    # Webhooks
-    thumbnail_url = get_asset_thumbnail(final_asset_id)
-    display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
+    operation_path = response.json().get("path")
+    print(f"⚙️ Operação iniciada: {operation_path}")
     
+    final_asset_id = "N/A"
+    for i in range(10):
+        time.sleep(3)
+        op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers=headers)
+        if op_res.status_code == 200:
+            op_data = op_res.json()
+            if op_data.get("done"):
+                final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
+                print(f"✅ ASSET_ID={final_asset_id}")
+                break
+
+    # Notificações (Webhooks)
+    thumbnail_url = get_asset_thumbnail(final_asset_id)
     embed_payload = {
         "embeds": [{
             "title": "📦 Asset Processed!",
-            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.",
             "color": 3066993 if final_asset_id != "N/A" else 15158332,
             "fields": [
                 {"name": "Status", "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed", "inline": True},
-                {"name": "Final ID", "value": display_id, "inline": True},
-                {"name": "Type", "value": ASSET_CATEGORY, "inline": True},
-                {"name": "Player", "value": PLAYER_NAME, "inline": True}
+                {"name": "Final ID", "value": str(final_asset_id), "inline": True},
+                {"name": "Type", "value": ASSET_CATEGORY, "inline": True}
             ],
-            "image": {"url": thumbnail_url} if thumbnail_url else {},
-            "footer": {"text": "Sent via AssetManager 4.0"}
+            "image": {"url": thumbnail_url} if thumbnail_url else {}
         }]
     }
 
-    targets = [ADMIN_WEBHOOK]
-    if PLAYER_WEBHOOK: targets.append(PLAYER_WEBHOOK)
-
-    for webhook_url in targets:
-        try:
-            requests.post(webhook_url, json=embed_payload)
-        except:
-            pass
+    for webhook_url in [ADMIN_WEBHOOK, PLAYER_WEBHOOK]:
+        if webhook_url:
+            try: requests.post(webhook_url, json=embed_payload)
+            except: pass
 
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID, USER_TOKEN)
 
