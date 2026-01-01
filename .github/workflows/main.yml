@@ -38,13 +38,9 @@ jobs:
           
           if [ -f "bulk_upload.py" ]; then
             echo "--- INICIANDO SCRIPT PYTHON ---"
-            # É esta linha que faz o script rodar:
-            python bulk_upload.py > output.txt
+            # Adicionamos o "2>&1" para capturar erros do Python no console
+            python bulk_upload.py 2>&1 | tee output.txt
             
-            # Mostra o que aconteceu no log
-            cat output.txt
-            
-            # Extrai o ID para o log do GitHub
             NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt || echo "N/A")
             echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
           else
