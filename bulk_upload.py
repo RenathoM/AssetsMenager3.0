@@ -50,7 +50,38 @@ def main():
 
     # --- DAQUI PARA BAIXO SEGUE O RESTANTE DO SEU CÓDIGO DE UPLOAD ---
     print("📡 Tentando conexão com a API do Roblox...")
-    # (Adicione aqui as funções de requests.post para o arquivo rbxm)
+    file_to_upload = "assets.rbxm" 
+    
+    asset_config = {
+        "assetType": "Model",
+        "displayName": f"Asset_{int(time.time())}",
+        "description": "Uploaded via GitHub Actions",
+        "creationContext": {
+            "creator": {"groupId": str(MY_GROUP_ID)}
+        }
+    }
+
+    print(f"📤 Enviando arquivo: {file_to_upload} para o grupo {MY_GROUP_ID}...")
+
+    try:
+        with open(file_to_upload, "rb") as f:
+            files = {
+                "request": (None, json.dumps(asset_config), "application/json"),
+                "fileContent": (file_to_upload, f, "application/octet-stream")
+            }
+            # Note que NÃO usamos 'json=' aqui, usamos 'files='
+            response = requests.post(url, headers={"Authorization": f"Bearer {user_token}"}, files=files)
+
+        if response.status_code == 200:
+            data = response.json()
+            print(f"⚙️ Operação criada com sucesso! Caminho: {data.get('path')}")
+            # Aqui você pode adicionar o loop de 'polling' para pegar o ID final se desejar
+        else:
+            print(f"❌ Erro na API do Roblox: {response.status_code}")
+            print(f"Detalhes: {response.text}")
+
+    except Exception as e:
+        print(f"❌ Erro ao tentar o upload: {e}")
 
 if __name__ == "__main__":
     main()
