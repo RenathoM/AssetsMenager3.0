@@ -50,20 +50,20 @@ def main():
         print(f"❌ Erro ao ler payload: {e}")
         return
 
-   ASSET_CATEGORY = payload.get("asset_type", "Model") 
+    # Lógica de Seleção de Token
+    ASSET_CATEGORY = payload.get("asset_type", "Model") 
     token_env_name = f"RBX_TOKEN_{ASSET_CATEGORY.upper()}"
     USER_TOKEN = os.getenv(token_env_name)
 
     if not USER_TOKEN:
-        print(f"❌ DEBUG: A variável {token_env_name} está VAZIA.")
-        print(f"❌ Categorias disponíveis no ambiente: {[k for k in os.environ.keys() if 'RBX_TOKEN' in k]}")
+        print(f"❌ Erro: Token para {ASSET_CATEGORY} ({token_env_name}) não configurado.")
+        return
 
     PLAYER_WEBHOOK = payload.get("discord_webhook")
     ORIGINAL_ID = payload.get("asset_id")
     PLAYER_NAME = payload.get("player_name", "Unknown")
     TARGET_USER_ID = payload.get("target_user_id", "0")
 
-    # Para acessórios rbxm, o tipo na API permanece "Model"
     roblox_asset_type = "Model"
 
     # Download
@@ -76,7 +76,7 @@ def main():
         print(f"❌ Falha no download: {r_down.status_code}")
         return
 
-    # Upload via Bearer Token
+    # Upload
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
         "assetType": roblox_asset_type,
@@ -111,7 +111,7 @@ def main():
     else:
         print(f"❌ Erro no upload: {response.text}")
 
-    # Processamento de Webhooks (Agora corretamente dentro da main)
+    # Webhooks
     thumbnail_url = get_asset_thumbnail(final_asset_id)
     display_id = f"[{final_asset_id}](https://www.roblox.com/library/{final_asset_id})" if final_asset_id != "N/A" else "`N/A`"
     
@@ -140,7 +140,6 @@ def main():
         except:
             pass
 
-    # Notificação final para o Messaging Service
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID, USER_TOKEN)
 
 if __name__ == "__main__":
