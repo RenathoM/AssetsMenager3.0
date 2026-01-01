@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -22,40 +22,29 @@ jobs:
       - name: Run Unified Upload Script
         id: upload_step
         env:
-          # Segredos injetados
-          RBX_TOKEN_HAT: ${{ secrets.RBX_TOKEN_HAT }}
-          RBX_TOKEN_FACE: ${{ secrets.RBX_TOKEN_FACE }}
-          RBX_TOKEN_MODEL: ${{ secrets.RBX_TOKEN_MODEL }}
-          
-          # Variáveis de ambiente
-          MY_GROUP_ID: "633516837"
-          UNIVERSE_ID: "9469723620"
-          GITHUB_EVENT_PATH: ${{ github.event_path }}
-
+          RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          ROBLOX_COOKIE: ${{ secrets.ROBLOX_COOKIE }}
+          GROUP_ID: ${{ secrets.GROUP_ID }}
+          # Passa os dados do trigger para o python se necessário
+          ASSET_ID: ${{ github.event.client_payload.assetId }}
         run: |
-          echo "--- Verificando Arquivos ---"
-          ls -F
-          
           if [ -f "bulk_upload.py" ]; then
-            echo "--- Executando Upload ---"
-            
-            # Executa e captura saída total
-            python bulk_upload.py > output.txt 2>&1
+            # O script python deve imprimir "ASSET_ID=12345" no console
+            python bulk_upload.py > output.txt
             cat output.txt
-            
-            # Extração do ID do Asset
-            NEW_ID=$(grep -oP 'Asset ID: \K\d+' output.txt || echo "N/A")
-            
-            echo "ID Extraído: $NEW_ID"
+            # Extrai o ID do output para usar no próximo passo
+            NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt)
             echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
           else
-            echo "❌ ERRO: bulk_upload.py não encontrado!"
+            echo "❌ Erro: bulk_upload.py não encontrado!"
             exit 1
           fi
 
-      - name: Final Report
-        if: always()
+      - name: Notify Roblox Messaging Service
+        # Este passo agora roda DEPOIS do upload e apenas se o ID existir
+        if: env.NEW_ASSET_ID != ''
         run: |
-          echo "### Resumo do Upload 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "* **Asset ID:** ${{ env.NEW_ASSET_ID }}" >> $GITHUB_STEP_SUMMARY
-          echo "* **Status:** Processamento concluído" >> $GITHUB_STEP_SUMMARY
+          curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/SEU_ID_AQUI/topics/AssetFinished" \
+          -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d "{\"message\": \"success|${{ env.NEW_ASSET_ID }}\"}"
