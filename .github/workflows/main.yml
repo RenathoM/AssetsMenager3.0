@@ -22,28 +22,32 @@ jobs:
       - name: Run Unified Upload Script
         id: upload_step
         env:
-          # Mapeamento dos Tokens específicos por categoria
-          # O Python buscará estes nomes baseados no 'asset_type' enviado no payload
+          # Segredos do GitHub (Certifique-se de que existem com esses nomes)
           RBX_TOKEN_HAT: ${{ secrets.RBX_TOKEN_HAT }}
           RBX_TOKEN_FACE: ${{ secrets.RBX_TOKEN_FACE }}
           RBX_TOKEN_MODEL: ${{ secrets.RBX_TOKEN_MODEL }}
           
-          # IDs Fixos e Caminhos
+          # Configurações do ambiente
           MY_GROUP_ID: "633516837"
           UNIVERSE_ID: "9469723620"
           GITHUB_EVENT_PATH: ${{ github.event_path }}
 
         run: |
-          ls -R  # Isso vai listar todos os arquivos no log para você conferir o nome
+          echo "--- LISTANDO ARQUIVOS ---"
+          ls -R
+          
           if [ -f "bulk_upload.py" ]; then
+            echo "--- INICIANDO SCRIPT PYTHON ---"
+            # É esta linha que faz o script rodar:
             python bulk_upload.py > output.txt
+            
+            # Mostra o que aconteceu no log
             cat output.txt
+            
+            # Extrai o ID para o log do GitHub
             NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt || echo "N/A")
             echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
           else
-            echo "❌ ERRO CRÍTICO: O arquivo bulk_upload.py não existe na raiz do repositório!"
-            exit 1 # Isso vai fazer o botão do GitHub ficar vermelho se falhar
+            echo "❌ ERRO: bulk_upload.py não encontrado!"
+            exit 1
           fi
-          
-      # O passo de Notificação via CURL foi removido pois o script Python 
-      # agora já faz isso automaticamente usando o Token Bearer.
