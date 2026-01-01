@@ -26,7 +26,7 @@ jobs:
           # O Python buscará estes nomes baseados no 'asset_type' enviado no payload
           RBX_TOKEN_HAT: ${{ secrets.RBX_TOKEN_HAT }}
           RBX_TOKEN_FACE: ${{ secrets.RBX_TOKEN_FACE }}
-          RBX_TOKEN_MODEL: ${{ secrets.ROBLOX_API_KEY }}
+          RBX_TOKEN_MODEL: ${{ secrets.RBX_TOKEN_MODEL }}
           
           # IDs Fixos e Caminhos
           MY_GROUP_ID: "633516837"
