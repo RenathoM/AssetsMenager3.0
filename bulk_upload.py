@@ -3,14 +3,13 @@ import os
 import json
 import time
 
-# Configurações fixas do ambiente
+# Configurações fixas
 MY_GROUP_ID = "633516837"
 UNIVERSE_ID = "9469723620"
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 ADMIN_WEBHOOK = "https://discord.com/api/webhooks/1453805636784488509/6tdAXTB0DqdiWaLTmi05bWWDnTDk9mGLhmDFVTXgiL48yVKcOpN_at22DtCY8SotPvn1"
 
 def get_asset_thumbnail(asset_id):
-    """Obtém a imagem do asset para o Webhook."""
     if asset_id == "N/A": return None
     url = f"https://thumbnails.roblox.com/v1/assets?assetIds={asset_id}&returnPolicy=PlaceHolder&size=420x420&format=png"
     try:
@@ -19,48 +18,43 @@ def get_asset_thumbnail(asset_id):
             data = response.json()
             if data.get("data") and len(data["data"]) > 0:
                 return data["data"][0].get("imageUrl")
-    except Exception as e:
-        print(f"⚠️ Erro ao obter thumbnail: {e}")
+    except: pass
     return None
 
 def notify_roblox(status, asset_id="N/A", target_user_id="0", token=None):
-    """Envia feedback para o Messaging Service do Roblox."""
     if not token: return
     url = f"https://apis.roblox.com/messaging-service/v1/universes/{UNIVERSE_ID}/topics/AssetUploadFeedback"
-    data = {
-        "message": json.dumps({
-            "playerId": str(target_user_id),
-            "status": status,
-            "assetId": str(asset_id)
-        })
-    }
+    data = {"message": json.dumps({"playerId": str(target_user_id), "status": status, "assetId": str(asset_id)})}
     try:
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         requests.post(url, headers=headers, json=data)
-    except:
-        pass
+    except: pass
 
 def main():
-    # ... (leitura do payload igual)
-    
-    ASSET_CATEGORY = payload.get("asset_type", "Model") 
-    token_env_name = f"RBX_TOKEN_{ASSET_CATEGORY.upper()}"
-    USER_TOKEN = os.getenv(token_env_name)
-
-    # ESTE PRINT VAI APARECER NO LOG DO GITHUB
-    if not USER_TOKEN:
-        print(f"❌ ERRO: O segredo {token_env_name} NAO foi encontrado no GitHub!")
-        print(f"DEBUG: Payload recebeu asset_type = {ASSET_CATEGORY}")
+    # 1. Validação do Caminho do Evento
+    if not EVENT_PATH or not os.path.exists(EVENT_PATH):
+        print("❌ Erro: GITHUB_EVENT_PATH não encontrado ou inválido.")
         return
 
-    # Lógica de Seleção Dinâmica de Token
+    # 2. Leitura do Payload (Corrigindo o NameError)
+    try:
+        with open(EVENT_PATH, 'r') as f:
+            event_data = json.load(f)
+            payload = event_data.get("client_payload", {})
+            if not payload:
+                print("❌ Erro: client_payload está vazio.")
+                return
+    except Exception as e:
+        print(f"❌ Erro ao ler payload: {e}")
+        return
+
+    # 3. Lógica de Seleção de Token
     ASSET_CATEGORY = payload.get("asset_type", "Model") 
     token_env_name = f"RBX_TOKEN_{ASSET_CATEGORY.upper()}"
     USER_TOKEN = os.getenv(token_env_name)
 
-    # Diagnóstico de Token
     if not USER_TOKEN:
-        print(f"❌ ERRO CRÍTICO: O Secret '{token_env_name}' não foi encontrado!")
+        print(f"❌ Erro: Token para {ASSET_CATEGORY} ({token_env_name}) não configurado nos Secrets.")
         return
 
     PLAYER_WEBHOOK = payload.get("discord_webhook")
@@ -68,7 +62,7 @@ def main():
     PLAYER_NAME = payload.get("player_name", "Unknown")
     TARGET_USER_ID = payload.get("target_user_id", "0")
 
-    # Download do arquivo RBXM
+    # 4. Download
     file_path = "item.rbxm"
     r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}")
     if r_down.status_code != 200:
@@ -77,7 +71,7 @@ def main():
     with open(file_path, "wb") as f:
         f.write(r_down.content)
 
-    # Configuração de Upload (API de Assets v1)
+    # 5. Upload
     url = "https://apis.roblox.com/assets/v1/assets"
     asset_config = {
         "assetType": "Model",
@@ -95,27 +89,24 @@ def main():
         }
         response = requests.post(url, headers=headers, files=files)
 
-    if response.status_code != 200:
-        print(f"❌ Erro na API do Roblox: {response.text}")
-        notify_roblox("error", target_user_id=TARGET_USER_ID, token=USER_TOKEN)
-        return
-
-    # Polling para obter o ID final do asset
-    operation_path = response.json().get("path")
-    print(f"⚙️ Operação iniciada: {operation_path}")
-    
     final_asset_id = "N/A"
-    for i in range(10):
-        time.sleep(3)
-        op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers=headers)
-        if op_res.status_code == 200:
-            op_data = op_res.json()
-            if op_data.get("done"):
-                final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
-                print(f"✅ ASSET_ID={final_asset_id}")
-                break
+    if response.status_code == 200:
+        operation_path = response.json().get("path")
+        print(f"⚙️ Operação iniciada: {operation_path}")
+        
+        for i in range(10):
+            time.sleep(3)
+            op_res = requests.get(f"https://apis.roblox.com/assets/v1/{operation_path}", headers=headers)
+            if op_res.status_code == 200:
+                op_data = op_res.json()
+                if op_data.get("done"):
+                    final_asset_id = op_data.get("response", {}).get("assetId", "N/A")
+                    print(f"✅ ASSET_ID={final_asset_id}")
+                    break
+    else:
+        print(f"❌ Erro no upload: {response.text}")
 
-    # Envio de Webhooks (Logs e Jogador)
+    # 6. Webhooks e Notificação
     thumbnail_url = get_asset_thumbnail(final_asset_id)
     embed_payload = {
         "embeds": [{
@@ -125,8 +116,7 @@ def main():
             "fields": [
                 {"name": "Status", "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed", "inline": True},
                 {"name": "Final ID", "value": str(final_asset_id), "inline": True},
-                {"name": "Type", "value": ASSET_CATEGORY, "inline": True},
-                {"name": "Player", "value": PLAYER_NAME, "inline": True}
+                {"name": "Type", "value": ASSET_CATEGORY, "inline": True}
             ],
             "image": {"url": thumbnail_url} if thumbnail_url else {},
             "footer": {"text": "Sent via AssetManager 4.0"}
@@ -138,7 +128,6 @@ def main():
             try: requests.post(webhook_url, json=embed_payload)
             except: pass
 
-    # Notificação final para o jogo
     notify_roblox("success" if final_asset_id != "N/A" else "error", final_asset_id, TARGET_USER_ID, USER_TOKEN)
 
 if __name__ == "__main__":
