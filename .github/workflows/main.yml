@@ -35,17 +35,16 @@ jobs:
 
         run: |
           if [ -f "bulk_upload.py" ]; then
-            # Executa o script e salva a saída para depuração e captura de ID
+            # É ESSA LINHA ABAIXO QUE EXECUTA O SCRIPT:
             python bulk_upload.py > output.txt
             cat output.txt
             
-            # Captura o ID gerado para variáveis de ambiente do GitHub (opcional, para logs)
-            NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt || echo "")
+            NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt || echo "N/A")
             echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
           else
-            echo "❌ Erro: bulk_upload.py não encontrado!"
+            echo "❌ Erro: O arquivo bulk_upload.py não foi encontrado na raiz do repositório!"
             exit 1
           fi
-
+          
       # O passo de Notificação via CURL foi removido pois o script Python 
       # agora já faz isso automaticamente usando o Token Bearer.
