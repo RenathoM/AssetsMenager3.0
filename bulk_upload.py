@@ -5,7 +5,7 @@ import time
 
 # Configurações do Ambiente
 ROBLOX_COOKIE = os.getenv("ROBLOX_COOKIE")
-API_KEY = os.getenv("RBX_API_KEY") # Prioridade caso o cookie falhe 
+API_KEY = os.getenv("RBX_API_KEY") 
 MY_GROUP_ID = "633516837" # [cite: 1]
 UNIVERSE_ID = "9469723620" # [cite: 1]
 EVENT_PATH = os.getenv("GITHUB_EVENT_PATH") # [cite: 1]
@@ -25,13 +25,13 @@ def get_csrf_token():
 
 def get_asset_thumbnail(asset_id):
     """Obtém a URL da imagem do asset."""
-    if asset_id == "N/A": return None
+    if not asset_id or asset_id == "N/A": return None
     url = f"https://thumbnails.roblox.com/v1/assets?assetIds={asset_id}&returnPolicy=PlaceHolder&size=420x420&format=png"
     try:
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             data = response.json()
-            if data.get("data"):
+            if data.get("data") and len(data["data"]) > 0:
                 return data["data"][0].get("imageUrl")
     except:
         pass
@@ -53,14 +53,13 @@ def main():
         print(f"❌ Erro ao ler payload: {e}")
         return
 
-    PLAYER_WEBHOOK = payload.get("discord_webhook") # [cite: 5]
-    ORIGINAL_ID = payload.get("asset_id") # [cite: 5]
+    PLAYER_WEBHOOK = payload.get("discord_webhook") # 
+    ORIGINAL_ID = payload.get("asset_id") # 
     PLAYER_NAME = payload.get("player_name", "Unknown")
-    TARGET_USER_ID = payload.get("target_user_id", "0")
 
     # 2. Download do Asset
     file_path = "item.rbxm"
-    r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}") # [cite: 5]
+    r_down = requests.get(f"https://assetdelivery.roblox.com/v1/asset/?id={ORIGINAL_ID}") # 
     if r_down.status_code == 200:
         with open(file_path, "wb") as f:
             f.write(r_down.content)
@@ -80,10 +79,10 @@ def main():
             "x-csrf-token": csrf
         }
     elif API_KEY:
-        print("📡 Cookie falhou ou ausente. Mudando para API Key...") # 
+        print("📡 Cookie falhou ou ausente. Usando API Key...")
         headers = {"x-api-key": API_KEY}
     else:
-        print("❌ Nenhuma forma de autenticação disponível (Cookie ou API Key).")
+        print("❌ Nenhuma forma de autenticação disponível.")
         return
 
     # 4. Upload
@@ -91,7 +90,7 @@ def main():
     asset_config = {
         "assetType": "Model",
         "displayName": f"Asset_{ORIGINAL_ID}",
-        "description": f"Exported for {PLAYER_NAME}",
+        "description": f"Public model for {PLAYER_NAME}. Free to use.",
         "creationContext": {"creator": {"groupId": str(MY_GROUP_ID)}} # [cite: 6]
     }
     
@@ -123,27 +122,31 @@ def main():
                     break
 
     # 6. Webhooks
+    # Obtendo a imagem do item ANTERIOR (Original)
     thumb_original = get_asset_thumbnail(ORIGINAL_ID)
+    # Corrigindo link para a Store do Criador
     store_link = f"https://create.roblox.com/store/asset/{final_asset_id}"
     display_id = f"[{final_asset_id}]({store_link})" if final_asset_id != "N/A" else "`N/A`"
     
-    embed = {
+    embed_payload = {
         "embeds": [{
             "title": "📦 Asset Processed!",
-            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.", [cite: 11]
+            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.", # [cite: 11]
             "color": 3066993 if final_asset_id != "N/A" else 15158332,
             "fields": [
                 {"name": "Status", "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed", "inline": True},
                 {"name": "Final ID (Click to Get)", "value": display_id, "inline": True},
-                {"name": "Player", "value": PLAYER_NAME, "inline": True} [cite: 12]
+                {"name": "Player", "value": PLAYER_NAME, "inline": True} # [cite: 12]
             ],
             "image": {"url": thumb_original} if thumb_original else {},
             "footer": {"text": "Public Asset - Store Ready"}
         }]
     }
 
+    # Corrigido o envio para ambos os webhooks usando a variável correta
     for webhook_url in [ADMIN_WEBHOOK, PLAYER_WEBHOOK]:
-        if webhook_url: requests.post(webhook_url, json=embed_payload) # [cite: 13]
+        if webhook_url:
+            requests.post(webhook_url, json=embed_payload) # 
 
     print("🏁 Processo finalizado.")
 
