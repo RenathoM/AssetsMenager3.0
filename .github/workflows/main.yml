@@ -9,40 +9,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        [cite_start]uses: actions/checkout@v3 [cite: 14]
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        [cite_start]uses: actions/setup-python@v4 [cite: 14]
         with:
           python-version: '3.10'
 
       - name: Install Requests
-        run: pip install requests
+        [cite_start]run: pip install requests [cite: 14]
 
       - name: Run Unified Upload Script
         id: upload_step
         env:
-          RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          ROBLOX_COOKIE: ${{ secrets.ROBLOX_COOKIE }}
-          # O script Python usa GITHUB_EVENT_PATH internamente para pegar o assetId
+          [cite_start]RBX_API_KEY: ${{ secrets.ROBLOX_API_KEY }} [cite: 15]
+          [cite_start]ROBLOX_COOKIE: ${{ secrets.ROBLOX_COOKIE }} [cite: 15]
         run: |
-          if [ -f "bulk_upload.py" ]; then
-            # Executa o script e salva a saída para extrair o ID
-            python bulk_upload.py > output.txt
+          if [ -f "bulk_upload.py" ]; then [cite: 17]
+            # Executa o script e salva a saída para capturar o ID
+            python bulk_upload.py > output.txt [cite: 18]
             cat output.txt
             
-            # Ajuste no grep para garantir que capture o ID corretamente do print do Python
+            # Extrai o ID do log: "✅ Sucesso! ASSET_ID=123456"
             NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt)
-            echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
+            echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV [cite: 18]
           else
-            echo "❌ Erro: bulk_upload.py não encontrado!"
+            echo "❌ Erro: bulk_upload.py não encontrado!" [cite: 19]
             exit 1
           fi
 
       - name: Notify Roblox Messaging Service
-        # Só executa se o upload teve sucesso e gerou um novo ID
         if: env.NEW_ASSET_ID != ''
         run: |
+          # O ID do Universo deve ser o 9469723620 conforme seu script [cite: 1]
           curl -X POST "https://apis.roblox.com/messaging-service/v1/universes/9469723620/topics/AssetFinished" \
           -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
           -H "Content-Type: application/json" \
