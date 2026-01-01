@@ -41,16 +41,16 @@ def notify_roblox(status, asset_id="N/A", target_user_id="0", token=None):
         pass
 
 def main():
-    if not EVENT_PATH:
-        print("❌ Erro: GITHUB_EVENT_PATH não encontrado.")
-        return
+    # ... (leitura do payload igual)
+    
+    ASSET_CATEGORY = payload.get("asset_type", "Model") 
+    token_env_name = f"RBX_TOKEN_{ASSET_CATEGORY.upper()}"
+    USER_TOKEN = os.getenv(token_env_name)
 
-    try:
-        with open(EVENT_PATH, 'r') as f:
-            event_data = json.load(f)
-            payload = event_data.get("client_payload", {})
-    except Exception as e:
-        print(f"❌ Erro ao ler payload: {e}")
+    # ESTE PRINT VAI APARECER NO LOG DO GITHUB
+    if not USER_TOKEN:
+        print(f"❌ ERRO: O segredo {token_env_name} NAO foi encontrado no GitHub!")
+        print(f"DEBUG: Payload recebeu asset_type = {ASSET_CATEGORY}")
         return
 
     # Lógica de Seleção Dinâmica de Token
