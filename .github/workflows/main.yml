@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Atualizado para v4
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -22,28 +22,39 @@ jobs:
       - name: Run Unified Upload Script
         id: upload_step
         env:
-          # Segredos do GitHub (Certifique-se de que existem com esses nomes)
+          # Segredos injetados como variáveis de ambiente
           RBX_TOKEN_HAT: ${{ secrets.RBX_TOKEN_HAT }}
           RBX_TOKEN_FACE: ${{ secrets.RBX_TOKEN_FACE }}
           RBX_TOKEN_MODEL: ${{ secrets.RBX_TOKEN_MODEL }}
           
-          # Configurações do ambiente
+          # Configurações globais
           MY_GROUP_ID: "633516837"
           UNIVERSE_ID: "9469723620"
           GITHUB_EVENT_PATH: ${{ github.event_path }}
 
         run: |
           echo "--- LISTANDO ARQUIVOS ---"
-          ls -R
+          ls -F
           
           if [ -f "bulk_upload.py" ]; then
             echo "--- INICIANDO SCRIPT PYTHON ---"
-            # Adicionamos o "2>&1" para capturar erros do Python no console
-            python bulk_upload.py 2>&1 | tee output.txt
             
-            NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt || echo "N/A")
+            # Executa o script e salva a saída
+            python bulk_upload.py > output.txt 2>&1
+            cat output.txt
+            
+            # Busca o ID na saída do script usando uma lógica mais flexível
+            # O script Python deve imprimir algo como: 🎉 Sucesso total! Novo Asset ID: 123456789
+            NEW_ID=$(grep -oP 'Asset ID: \K\d+' output.txt || echo "N/A")
+            
+            echo "ID Extraído: $NEW_ID"
             echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
           else
             echo "❌ ERRO: bulk_upload.py não encontrado!"
             exit 1
           fi
+
+      - name: Final Report
+        run: |
+          echo "Processo finalizado."
+          echo "Asset ID gerado: ${{ env.NEW_ASSET_ID }}"
