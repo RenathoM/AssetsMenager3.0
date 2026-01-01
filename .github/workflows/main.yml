@@ -34,16 +34,15 @@ jobs:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
 
         run: |
+          ls -R  # Isso vai listar todos os arquivos no log para você conferir o nome
           if [ -f "bulk_upload.py" ]; then
-            # É ESSA LINHA ABAIXO QUE EXECUTA O SCRIPT:
             python bulk_upload.py > output.txt
             cat output.txt
-            
             NEW_ID=$(grep -oP 'ASSET_ID=\K\d+' output.txt || echo "N/A")
             echo "NEW_ASSET_ID=$NEW_ID" >> $GITHUB_ENV
           else
-            echo "❌ Erro: O arquivo bulk_upload.py não foi encontrado na raiz do repositório!"
-            exit 1
+            echo "❌ ERRO CRÍTICO: O arquivo bulk_upload.py não existe na raiz do repositório!"
+            exit 1 # Isso vai fazer o botão do GitHub ficar vermelho se falhar
           fi
           
       # O passo de Notificação via CURL foi removido pois o script Python 
