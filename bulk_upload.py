@@ -43,45 +43,39 @@ def main():
 
     # 5. Configurar Cabeçalhos para a API do Roblox
     url = "https://apis.roblox.com/assets/v1/assets"
+    
+    # IMPORTANTE: Não coloque Content-Type aqui quando usar files=
     headers = {
-        "Authorization": f"Bearer {user_token.strip()}",
-        "Content-Type": "application/json"
+        "Authorization": f"Bearer {user_token.strip()}"
     }
 
-    # --- DAQUI PARA BAIXO SEGUE O RESTANTE DO SEU CÓDIGO DE UPLOAD ---
-    print("📡 Tentando conexão com a API do Roblox...")
-    file_to_upload = "assets.rbxm" 
-    
     asset_config = {
         "assetType": "Model",
-        "displayName": f"Asset_{int(time.time())}",
-        "description": "Uploaded via GitHub Actions",
+        "displayName": "Asset_GitHub_Upload",
+        "description": "Uploaded via Automation",
         "creationContext": {
             "creator": {"groupId": str(MY_GROUP_ID)}
         }
     }
 
-    print(f"📤 Enviando arquivo: {file_to_upload} para o grupo {MY_GROUP_ID}...")
-
     try:
-        with open(file_to_upload, "rb") as f:
+        with open("assets.rbxm", "rb") as f:
+            # O dicionário 'files' deve seguir este formato exato
             files = {
                 "request": (None, json.dumps(asset_config), "application/json"),
-                "fileContent": (file_to_upload, f, "application/octet-stream")
+                "fileContent": ("assets.rbxm", f, "application/octet-stream")
             }
-            # Note que NÃO usamos 'json=' aqui, usamos 'files='
-            response = requests.post(url, headers={"Authorization": f"Bearer {user_token}"}, files=files)
+            
+            print("📡 Enviando requisição...")
+            response = requests.post(url, headers=headers, files=files)
 
         if response.status_code == 200:
-            data = response.json()
-            print(f"⚙️ Operação criada com sucesso! Caminho: {data.get('path')}")
-            # Aqui você pode adicionar o loop de 'polling' para pegar o ID final se desejar
+            print(f"✅ Sucesso! Operação: {response.json().get('path')}")
         else:
-            print(f"❌ Erro na API do Roblox: {response.status_code}")
-            print(f"Detalhes: {response.text}")
+            print(f"❌ Erro {response.status_code}: {response.text}")
 
     except Exception as e:
-        print(f"❌ Erro ao tentar o upload: {e}")
+        print(f"❌ Erro no processo: {e}")
 
 if __name__ == "__main__":
     main()
