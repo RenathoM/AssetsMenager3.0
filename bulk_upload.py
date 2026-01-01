@@ -13,25 +13,28 @@ EVENT_PATH = os.getenv("GITHUB_EVENT_PATH") #
 ADMIN_WEBHOOK = "https://discord.com/api/webhooks/1453805636784488509/6tdAXTB0DqdiWaLTmi05bWWDnTDk9mGLhmDFVTXgiL48yVKcOpN_at22DtCY8SotPvn1"
 
 def set_asset_public(asset_id, headers):
-    """Tenta tornar o asset público/copiável usando permissões de asset."""
-    # Usando a API de Open Cloud para permissões (escopo asset-permissions:write)
+    """Tenta tornar o asset público com retry para evitar erro 404 de propagação."""
     url = f"https://apis.roblox.com/assets/v1/assets/{asset_id}/permissions"
+    payload = {"action": "Public"}
     
-    # O objetivo é definir a ação como 'Public' para permitir que outros obtenham o modelo
-    payload = {
-        "action": "Public"
-    }
+    # O Roblox precisa de um tempo para processar o ID antes de aceitar permissões
+    print(f"⏳ Aguardando propagação do Asset {asset_id}...")
+    time.sleep(10) # Espera 10 segundos antes da primeira tentativa
     
-    try:
-        # Patch para atualizar as permissões de acesso
-        response = requests.patch(url, headers=headers, json=payload, timeout=10)
-        
-        if response.status_code == 200:
-            print(f"🔓 Asset {asset_id} agora está PÚBLICO para obtenção.") #
-        else:
-            print(f"⚠️ Falha ao definir permissões públicas (Status: {response.status_code}).") #
-    except Exception as e:
-        print(f"⚠️ Erro ao tentar mudar permissões: {e}")
+    for attempt in range(2): # Tenta até 2 vezes
+        try:
+            response = requests.patch(url, headers=headers, json=payload, timeout=10)
+            if response.status_code == 200:
+                print(f"🔓 Asset {asset_id} agora está PÚBLICO com sucesso.")
+                return True
+            else:
+                print(f"⚠️ Tentativa {attempt+1} falhou (Status: {response.status_code}).")
+                time.sleep(5) # Espera mais 5 segundos antes de tentar de novo
+        except Exception as e:
+            print(f"⚠️ Erro na tentativa {attempt+1}: {e}")
+    
+    print("❌ Não foi possível liberar o asset automaticamente após retries.")
+    return False
 
 def get_csrf_token():
     if not ROBLOX_COOKIE: return None
