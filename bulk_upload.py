@@ -13,20 +13,28 @@ EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
 ADMIN_WEBHOOK = "https://discord.com/api/webhooks/1453805636784488509/6tdAXTB0DqdiWaLTmi05bWWDnTDk9mGLhmDFVTXgiL48yVKcOpN_at22DtCY8SotPvn1"
 
 def set_asset_public(asset_id, headers):
-    """Tenta tornar o asset público e gratuito (0 Robux)."""
-    # Endpoint para configurar economia/venda do asset
-    url = f"https://itemconfiguration.roblox.com/v1/assets/{asset_id}/release"
+    """Tenta tornar o asset público e gratuito usando o escopo Creator Store."""
+    # Usando a API de Creator Store que corresponde ao escopo 'creator-store-products:write'
+    url = f"https://apis.roblox.com/creator-store-products/v1/assets/{asset_id}"
+    
     payload = {
-        "saleStatus": "OnSale",
-        "priceInRobux": 0
+        "status": "Published",
+        "price": 0
     }
+    
     try:
-        # Tenta habilitar a venda
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        # Patch é usado para atualizar configurações de produtos existentes
+        response = requests.patch(url, headers=headers, json=payload, timeout=10)
+        
         if response.status_code == 200:
-            print(f"💰 Asset {asset_id} configurado como GRATUITO com sucesso.")
+            print(f"💰 Asset {asset_id} publicado na Creator Store com sucesso (Grátis).")
         else:
-            print(f"⚠️ Não foi possível automatizar a venda (Status: {response.status_code}).")
+            # Segunda tentativa: Tentar via Asset Permissions para garantir acesso
+            print(f"⚠️ Creator Store falhou ({response.status_code}). Tentando permissões de acesso...")
+            perm_url = f"https://apis.roblox.com/assets/v1/assets/{asset_id}/permissions"
+            perm_payload = {"action": "Public"} # Tenta tornar o modelo copiável
+            requests.patch(perm_url, headers=headers, json=perm_payload, timeout=5)
+            
     except Exception as e:
         print(f"⚠️ Erro ao tentar habilitar venda: {e}")
 
