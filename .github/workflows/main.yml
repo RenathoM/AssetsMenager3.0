@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4 # Atualizado para v4
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -22,29 +22,28 @@ jobs:
       - name: Run Unified Upload Script
         id: upload_step
         env:
-          # Segredos injetados como variáveis de ambiente
+          # Segredos injetados
           RBX_TOKEN_HAT: ${{ secrets.RBX_TOKEN_HAT }}
           RBX_TOKEN_FACE: ${{ secrets.RBX_TOKEN_FACE }}
           RBX_TOKEN_MODEL: ${{ secrets.RBX_TOKEN_MODEL }}
           
-          # Configurações globais
+          # Variáveis de ambiente
           MY_GROUP_ID: "633516837"
           UNIVERSE_ID: "9469723620"
           GITHUB_EVENT_PATH: ${{ github.event_path }}
 
         run: |
-          echo "--- LISTANDO ARQUIVOS ---"
+          echo "--- Verificando Arquivos ---"
           ls -F
           
           if [ -f "bulk_upload.py" ]; then
-            echo "--- INICIANDO SCRIPT PYTHON ---"
+            echo "--- Executando Upload ---"
             
-            # Executa o script e salva a saída
+            # Executa e captura saída total
             python bulk_upload.py > output.txt 2>&1
             cat output.txt
             
-            # Busca o ID na saída do script usando uma lógica mais flexível
-            # O script Python deve imprimir algo como: 🎉 Sucesso total! Novo Asset ID: 123456789
+            # Extração do ID do Asset
             NEW_ID=$(grep -oP 'Asset ID: \K\d+' output.txt || echo "N/A")
             
             echo "ID Extraído: $NEW_ID"
@@ -55,6 +54,8 @@ jobs:
           fi
 
       - name: Final Report
+        if: always()
         run: |
-          echo "Processo finalizado."
-          echo "Asset ID gerado: ${{ env.NEW_ASSET_ID }}"
+          echo "### Resumo do Upload 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "* **Asset ID:** ${{ env.NEW_ASSET_ID }}" >> $GITHUB_STEP_SUMMARY
+          echo "* **Status:** Processamento concluído" >> $GITHUB_STEP_SUMMARY
