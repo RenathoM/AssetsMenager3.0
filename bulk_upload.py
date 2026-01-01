@@ -50,14 +50,13 @@ def main():
         print(f"❌ Erro ao ler payload: {e}")
         return
 
-    # Lógica de Seleção de Token (Hat, Face, Model)
-    ASSET_CATEGORY = payload.get("asset_type", "Model") 
+   ASSET_CATEGORY = payload.get("asset_type", "Model") 
     token_env_name = f"RBX_TOKEN_{ASSET_CATEGORY.upper()}"
     USER_TOKEN = os.getenv(token_env_name)
 
     if not USER_TOKEN:
-        print(f"❌ Erro: Token para {ASSET_CATEGORY} ({token_env_name}) não configurado.")
-        return
+        print(f"❌ DEBUG: A variável {token_env_name} está VAZIA.")
+        print(f"❌ Categorias disponíveis no ambiente: {[k for k in os.environ.keys() if 'RBX_TOKEN' in k]}")
 
     PLAYER_WEBHOOK = payload.get("discord_webhook")
     ORIGINAL_ID = payload.get("asset_id")
