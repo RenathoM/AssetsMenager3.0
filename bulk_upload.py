@@ -3,13 +3,15 @@ import os
 import json
 import time
 
-MY_GROUP_ID = "633516837"
-UNIVERSE_ID = "9469723620"
-EVENT_PATH = os.getenv("GITHUB_EVENT_PATH")
-
+# O Python vai procurar por estes nomes exatos que você configurou no YAML
 def main():
-    if not EVENT_PATH or not os.path.exists(EVENT_PATH):
-        print("❌ Erro: Arquivo de evento não encontrado.")
+    # ... (leitura do payload)
+    ASSET_CATEGORY = payload.get("asset_type", "Model") 
+    token_env_name = f"RBX_TOKEN_{ASSET_CATEGORY.upper()}"
+    USER_TOKEN = os.getenv(token_env_name)
+
+    if not USER_TOKEN:
+        print(f"❌ Erro Crítico: A variável {token_env_name} está vazia!")
         return
 
     with open(EVENT_PATH, 'r') as f:
