@@ -123,19 +123,22 @@ def main():
                     break
 
     # 6. Webhooks
-    thumbnail_url = get_asset_thumbnail(final_asset_id)
-    embed_payload = {
+    thumb_original = get_asset_thumbnail(ORIGINAL_ID)
+    store_link = f"https://create.roblox.com/store/asset/{final_asset_id}"
+    display_id = f"[{final_asset_id}]({store_link})" if final_asset_id != "N/A" else "`N/A`"
+    
+    embed = {
         "embeds": [{
             "title": "📦 Asset Processed!",
-            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.", # [cite: 11]
+            "description": f"Wsp **{PLAYER_NAME}**! Your request has been processed.", [cite: 11]
             "color": 3066993 if final_asset_id != "N/A" else 15158332,
             "fields": [
                 {"name": "Status", "value": "✅ Success" if final_asset_id != "N/A" else "❌ Failed", "inline": True},
-                {"name": "Final ID", "value": str(final_asset_id), "inline": True}, # [cite: 11]
-                {"name": "Player", "value": PLAYER_NAME, "inline": True} # [cite: 12]
+                {"name": "Final ID (Click to Get)", "value": display_id, "inline": True},
+                {"name": "Player", "value": PLAYER_NAME, "inline": True} [cite: 12]
             ],
-            "image": {"url": thumbnail_url} if thumbnail_url else {},
-            "footer": {"text": "Sent via AssetManager 4.0"} # [cite: 12]
+            "image": {"url": thumb_original} if thumb_original else {},
+            "footer": {"text": "Public Asset - Store Ready"}
         }]
     }
 
